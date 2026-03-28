@@ -43,6 +43,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
           <NavItem view="EXPENSES" icon="receipt_long" label="Expenses & Adv." />
           <NavItem view="SALARY" icon="payments" label="Salary Report" />
           <NavItem view="INVOICE" icon="receipt" label="Invoice" />
+          <NavItem view="ACCOUNTS" icon="account_balance_wallet" label="Accounts" />
         </nav>
 
         <div className="p-4 border-t border-white/10">

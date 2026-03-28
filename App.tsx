@@ -7,6 +7,7 @@ import { AttendanceSheet } from './components/AttendanceSheet';
 import { Expenses } from './components/Expenses';
 import { SalaryReport } from './components/SalaryReport';
 import { Invoice } from './components/Invoice';
+import { Accounts } from './components/Accounts';
 import { ViewState } from './types';
 
 const App: React.FC = () => {
@@ -21,6 +22,7 @@ const App: React.FC = () => {
       {view === 'EXPENSES' && <Expenses />}
       {view === 'SALARY' && <SalaryReport />}
       {view === 'INVOICE' && <Invoice />}
+      {view === 'ACCOUNTS' && <Accounts />}
     </Layout>
   );
 };

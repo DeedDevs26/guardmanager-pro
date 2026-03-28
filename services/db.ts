@@ -1,4 +1,4 @@
-import { Guard, Site, AttendanceRecord, ExpenseRecord, Invoice } from '../types';
+import { Guard, Site, AttendanceRecord, ExpenseRecord, Invoice, AccountRecord } from '../types';
 
 /**
  * A simple LocalStorage wrapper to simulate a SQL-like database offline.
@@ -11,6 +11,7 @@ const STORAGE_KEYS = {
   ATTENDANCE: 'gmp_attendance',
   EXPENSES: 'gmp_expenses',
   INVOICES: 'gmp_invoices',
+  ACCOUNTS: 'gmp_accounts',
   INIT: 'gmp_init'
 };
 
@@ -33,6 +34,7 @@ const seedData = () => {
   localStorage.setItem(STORAGE_KEYS.GUARDS, JSON.stringify(guards));
   localStorage.setItem(STORAGE_KEYS.ATTENDANCE, JSON.stringify([]));
   localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify([]));
+  localStorage.setItem(STORAGE_KEYS.ACCOUNTS, JSON.stringify([]));
   localStorage.setItem(STORAGE_KEYS.INIT, 'true');
 };
 
@@ -122,6 +124,21 @@ export const db = {
     delete: (id: string) => {
       const list = getCollection<Invoice>(STORAGE_KEYS.INVOICES);
       saveCollection(STORAGE_KEYS.INVOICES, list.filter(i => i.id !== id));
+    }
+  },
+  accounts: {
+    getAll: () => {
+      const list = getCollection<AccountRecord>(STORAGE_KEYS.ACCOUNTS);
+      return list.slice().sort((a, b) => b.date.localeCompare(a.date));
+    },
+    add: (record: AccountRecord) => {
+      const list = getCollection<AccountRecord>(STORAGE_KEYS.ACCOUNTS);
+      list.push(record);
+      saveCollection(STORAGE_KEYS.ACCOUNTS, list);
+    },
+    delete: (id: string) => {
+      const list = getCollection<AccountRecord>(STORAGE_KEYS.ACCOUNTS);
+      saveCollection(STORAGE_KEYS.ACCOUNTS, list.filter(r => r.id !== id));
     }
   }
 };

@@ -45,6 +45,16 @@ export interface ExpenseRecord {
   type: 'Advance' | 'Fine' | 'Other';
 }
 
+export interface AccountRecord {
+  id: string;
+  date: string; // YYYY-MM-DD
+  description: string;
+  category: string;
+  amount: number;
+  type: 'expense' | 'income';
+  createdAt: string; // ISO timestamp
+}
+
 export interface SalarySlip {
   guardId: string;
   guardName: string;
@@ -96,4 +106,4 @@ export interface Invoice {
 }
 
 // Navigation Types
-export type ViewState = 'DASHBOARD' | 'GUARDS' | 'SITES' | 'ATTENDANCE' | 'EXPENSES' | 'SALARY' | 'INVOICE' | 'SETTINGS';
+export type ViewState = 'DASHBOARD' | 'GUARDS' | 'SITES' | 'ATTENDANCE' | 'EXPENSES' | 'SALARY' | 'INVOICE' | 'ACCOUNTS' | 'SETTINGS';
