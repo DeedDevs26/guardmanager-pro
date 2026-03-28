@@ -1,5 +1,0 @@
-{
-  "name": "GuardManager Pro",
-  "description": "A fully offline, desktop-class security guard management system featuring shift-based attendance, automatic salary calculation, and expense tracking using local database storage.",
-  "requestFramePermissions": []
-}

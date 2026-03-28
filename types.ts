@@ -57,5 +57,43 @@ export interface SalarySlip {
   netSalary: number;
 }
 
+// Invoice Types
+export interface InvoiceLineItem {
+  id: string;
+  description: string;
+  guards: number;
+  days: number;
+  rate: number;
+  value: number; // auto: guards * days * rate
+}
+
+export interface InvoiceCompany {
+  name: string;
+  address: string;
+  phone: string;
+  email: string;
+  pan: string;
+}
+
+export interface InvoiceBankDetails {
+  bankName: string;
+  accountName: string;
+  accountNumber: string;
+  ifsc: string;
+}
+
+export interface Invoice {
+  id: string;
+  invoiceNumber: string;
+  invoiceDate: string;
+  company: InvoiceCompany;
+  clientName: string;
+  clientAddress: string;
+  lineItems: InvoiceLineItem[];
+  totalAmount: number;
+  bankDetails: InvoiceBankDetails;
+  createdAt: string;
+}
+
 // Navigation Types
-export type ViewState = 'DASHBOARD' | 'GUARDS' | 'SITES' | 'ATTENDANCE' | 'EXPENSES' | 'SALARY' | 'SETTINGS';
+export type ViewState = 'DASHBOARD' | 'GUARDS' | 'SITES' | 'ATTENDANCE' | 'EXPENSES' | 'SALARY' | 'INVOICE' | 'SETTINGS';
