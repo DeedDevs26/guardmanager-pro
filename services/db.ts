@@ -1,4 +1,4 @@
-import { Guard, Site, AttendanceRecord, ExpenseRecord, Invoice, AccountRecord } from '../types';
+import { Guard, Site, AttendanceRecord, ExpenseRecord, Invoice, AccountRecord, BankOption } from '../types';
 
 /**
  * A simple LocalStorage wrapper to simulate a SQL-like database offline.
@@ -12,12 +12,20 @@ const STORAGE_KEYS = {
   EXPENSES: 'gmp_expenses',
   INVOICES: 'gmp_invoices',
   ACCOUNTS: 'gmp_accounts',
-  INIT: 'gmp_init'
+  INIT: 'gmp_init',
+  BANKS: 'gmp_banks'
 };
 
 // Seed Data
 const seedData = () => {
   if (localStorage.getItem(STORAGE_KEYS.INIT)) return;
+
+  const banks: BankOption[] = [
+    { id: 'b1', bankName: 'HDFC BANK', accountName: 'BLACK CAT COMMANDO SECURITY FORCE', accountNumber: '50200116920705', ifsc: 'HDFC0005519', upiId: '9500427215@pz' },
+    { id: 'b2', bankName: 'STATE BANK OF INDIA', accountName: 'KALKIRAJ', accountNumber: '34434987057', ifsc: 'SBIN0009314', upiId: '' }
+  ];
+
+  localStorage.setItem(STORAGE_KEYS.BANKS, JSON.stringify(banks));
 
   const sites: Site[] = [
     { id: 's1', name: 'North Warehouse', clientName: 'Logistics Corp', contactNumber: '9876543210', location: 'Industrial Area A' },
@@ -124,6 +132,18 @@ export const db = {
     delete: (id: string) => {
       const list = getCollection<Invoice>(STORAGE_KEYS.INVOICES);
       saveCollection(STORAGE_KEYS.INVOICES, list.filter(i => i.id !== id));
+    }
+  },
+  banks: {
+    getAll: () => getCollection<BankOption>(STORAGE_KEYS.BANKS),
+    add: (bank: BankOption) => {
+      const list = getCollection<BankOption>(STORAGE_KEYS.BANKS);
+      list.push(bank);
+      saveCollection(STORAGE_KEYS.BANKS, list);
+    },
+    delete: (id: string) => {
+      const list = getCollection<BankOption>(STORAGE_KEYS.BANKS);
+      saveCollection(STORAGE_KEYS.BANKS, list.filter(b => b.id !== id));
     }
   },
   accounts: {
