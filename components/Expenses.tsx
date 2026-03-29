@@ -31,7 +31,7 @@ export const Expenses: React.FC = () => {
       reason: newExpense.reason || '',
       type: newExpense.type as any
     });
-    
+
     setNewExpense({
       date: new Date().toISOString().split('T')[0],
       type: 'Advance',
@@ -43,7 +43,7 @@ export const Expenses: React.FC = () => {
   };
 
   const handleDelete = (id: string) => {
-    if(confirm('Delete this expense entry?')) {
+    if (confirm('Delete this expense entry?')) {
       db.expenses.delete(id);
       refresh();
     }
@@ -60,11 +60,11 @@ export const Expenses: React.FC = () => {
           <form onSubmit={handleAdd} className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-slate-500 mb-1">Select Guard</label>
-              <select 
-                required 
+              <select
+                required
                 className="w-full border rounded p-2 bg-slate-50"
                 value={newExpense.guardId || ''}
-                onChange={e => setNewExpense({...newExpense, guardId: e.target.value})}
+                onChange={e => setNewExpense({ ...newExpense, guardId: e.target.value })}
               >
                 <option value="">Select...</option>
                 {guards.filter(g => g.status === 'Active').map(g => (
@@ -72,49 +72,49 @@ export const Expenses: React.FC = () => {
                 ))}
               </select>
             </div>
-            
+
             <div>
               <label className="block text-xs font-bold text-slate-500 mb-1">Date</label>
-              <input 
-                type="date" 
-                required 
+              <input
+                type="date"
+                required
                 className="w-full border rounded p-2 bg-slate-50"
                 value={newExpense.date}
-                onChange={e => setNewExpense({...newExpense, date: e.target.value})}
+                onChange={e => setNewExpense({ ...newExpense, date: e.target.value })}
               />
             </div>
 
             <div>
               <label className="block text-xs font-bold text-slate-500 mb-1">Type</label>
-              <select 
+              <select
                 className="w-full border rounded p-2 bg-slate-50"
                 value={newExpense.type}
-                onChange={e => setNewExpense({...newExpense, type: e.target.value as any})}
+                onChange={e => setNewExpense({ ...newExpense, type: e.target.value as any })}
               >
                 <option value="Advance">Salary Advance</option>
-                <option value="Fine">Fine / Deduction</option>
+                <option value="Uniform">Uniform Deduction</option>
                 <option value="Other">Other Expense</option>
               </select>
             </div>
 
             <div>
               <label className="block text-xs font-bold text-slate-500 mb-1">Amount (₹)</label>
-              <input 
-                type="number" 
-                required 
+              <input
+                type="number"
+                required
                 min="0"
                 className="w-full border rounded p-2 bg-slate-50 font-bold text-primary"
                 value={newExpense.amount || ''}
-                onChange={e => setNewExpense({...newExpense, amount: Number(e.target.value)})}
+                onChange={e => setNewExpense({ ...newExpense, amount: Number(e.target.value) })}
               />
             </div>
 
             <div>
               <label className="block text-xs font-bold text-slate-500 mb-1">Reason/Notes</label>
-              <textarea 
+              <textarea
                 className="w-full border rounded p-2 bg-slate-50 h-20"
                 value={newExpense.reason || ''}
-                onChange={e => setNewExpense({...newExpense, reason: e.target.value})}
+                onChange={e => setNewExpense({ ...newExpense, reason: e.target.value })}
               ></textarea>
             </div>
 
@@ -148,9 +148,10 @@ export const Expenses: React.FC = () => {
                       {guards.find(g => g.id === exp.guardId)?.name || 'Unknown'}
                     </td>
                     <td className="px-6 py-3">
-                      <span className={`text-xs px-2 py-1 rounded font-bold ${
-                        exp.type === 'Advance' ? 'bg-orange-100 text-orange-700' : 'bg-red-100 text-red-700'
-                      }`}>
+                      <span className={`text-xs px-2 py-1 rounded font-bold ${exp.type === 'Advance' ? 'bg-orange-100 text-orange-700' :
+                          exp.type === 'Uniform' ? 'bg-purple-100 text-purple-700' :
+                            'bg-slate-100 text-slate-600'
+                        }`}>
                         {exp.type}
                       </span>
                     </td>

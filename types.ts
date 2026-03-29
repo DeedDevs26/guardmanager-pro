@@ -42,7 +42,7 @@ export interface ExpenseRecord {
   date: string;
   amount: number; // Advance amount
   reason: string;
-  type: 'Advance' | 'Fine' | 'Other';
+  type: 'Advance' | 'Uniform' | 'Other';
 }
 
 export interface AccountRecord {
@@ -63,6 +63,7 @@ export interface SalarySlip {
   grossSalary: number;
   totalAdvance: number;
   totalFoodCost: number;
+  totalOthers: number;
   uniformDeduction: number;
   netSalary: number;
 }
