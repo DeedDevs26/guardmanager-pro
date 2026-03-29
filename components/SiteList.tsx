@@ -20,13 +20,12 @@ export const SiteList: React.FC = () => {
       name: editingSite.name,
       clientName: editingSite.clientName || '',
       contactNumber: editingSite.contactNumber || '',
-      location: editingSite.location || ''
+      location: editingSite.location || '',
+      gstNo: editingSite.gstNo || ''
     };
     
     if (editingSite.id) {
-      // In a real app we'd need an update method, for now delete/add works for simple local storage
-      db.sites.delete(editingSite.id);
-      db.sites.add(site);
+      db.sites.update(site);
     } else {
       db.sites.add(site);
     }
@@ -62,9 +61,20 @@ export const SiteList: React.FC = () => {
               <div className="p-3 bg-purple-100 text-purple-600 rounded-lg">
                 <span className="material-icons">apartment</span>
               </div>
-              <button onClick={() => deleteSite(site.id)} className="text-slate-400 hover:text-red-500">
-                <span className="material-icons">delete</span>
-              </button>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => { setEditingSite(site); setIsModalOpen(true); }}
+                  className="p-2 text-slate-400 hover:text-primary hover:bg-blue-50 rounded-lg transition"
+                >
+                  <span className="material-icons text-sm">edit</span>
+                </button>
+                <button 
+                  onClick={() => deleteSite(site.id)} 
+                  className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition"
+                >
+                  <span className="material-icons text-sm">delete</span>
+                </button>
+              </div>
             </div>
             <h3 className="text-xl font-bold text-slate-800 mb-1">{site.name}</h3>
             <p className="text-sm text-slate-500 mb-4">{site.location}</p>
@@ -78,6 +88,12 @@ export const SiteList: React.FC = () => {
                 <span className="text-slate-500">Contact:</span>
                 <span className="font-medium">{site.contactNumber}</span>
               </div>
+              {site.gstNo && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">GST No:</span>
+                  <span className="font-medium text-primary uppercase text-[10px] tracking-wider">{site.gstNo}</span>
+                </div>
+              )}
             </div>
           </div>
         ))}
@@ -111,6 +127,12 @@ export const SiteList: React.FC = () => {
                 className="w-full border rounded p-2"
                 value={editingSite.contactNumber || ''}
                 onChange={e => setEditingSite({...editingSite, contactNumber: e.target.value})}
+              />
+              <input 
+                placeholder="GST Number (Optional)" 
+                className="w-full border rounded p-2 uppercase"
+                value={editingSite.gstNo || ''}
+                onChange={e => setEditingSite({...editingSite, gstNo: e.target.value})}
               />
               <div className="flex justify-end gap-3 mt-4">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600">Cancel</button>

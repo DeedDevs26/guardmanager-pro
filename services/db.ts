@@ -28,8 +28,8 @@ const seedData = () => {
   localStorage.setItem(STORAGE_KEYS.BANKS, JSON.stringify(banks));
 
   const sites: Site[] = [
-    { id: 's1', name: 'North Warehouse', clientName: 'Logistics Corp', contactNumber: '9876543210', location: 'Industrial Area A' },
-    { id: 's2', name: 'City Mall', clientName: 'Retail Giants', contactNumber: '9123456780', location: 'City Center' },
+    { id: 's1', name: 'North Warehouse', clientName: 'Logistics Corp', contactNumber: '9876543210', location: 'Industrial Area A', gstNo: '29AAAAA0000A1Z5' },
+    { id: 's2', name: 'City Mall', clientName: 'Retail Giants', contactNumber: '9123456780', location: 'City Center', gstNo: '29BBBBB1111B1Z5' },
   ];
 
   const guards: Guard[] = [
@@ -87,6 +87,14 @@ export const db = {
       const list = getCollection<Site>(STORAGE_KEYS.SITES);
       list.push(site);
       saveCollection(STORAGE_KEYS.SITES, list);
+    },
+    update: (site: Site) => {
+      const list = getCollection<Site>(STORAGE_KEYS.SITES);
+      const idx = list.findIndex(s => s.id === site.id);
+      if (idx !== -1) {
+        list[idx] = site;
+        saveCollection(STORAGE_KEYS.SITES, list);
+      }
     },
     delete: (id: string) => {
       const list = getCollection<Site>(STORAGE_KEYS.SITES);
