@@ -158,7 +158,7 @@ const InvoicePreview: React.FC<PreviewProps> = ({
             <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 'bold', fontSize: '14px', textTransform: 'uppercase' }}>{clientName || 'Client Name'}</div>
                 <div style={{ color: '#000', marginTop: '2px', whiteSpace: 'pre-line', fontSize: '12px', paddingLeft: '8px' }}>{clientAddress || 'Client Address'}</div>
-                {invoiceType === 'with_gst' && clientGstNumber && (
+                {clientGstNumber && (
                     <div style={{ marginTop: '12px', fontSize: '12px' }}>GSTNO: {clientGstNumber}</div>
                 )}
             </div>
@@ -360,6 +360,8 @@ export const Invoice: React.FC = () => {
     const [selectedBankId, setSelectedBankId] = useState<string>('custom');
     const [bankDetails, setBankDetails] = useState<InvoiceBankDetails | BankOption>(defaultBank);
     const [savedInvoices, setSavedInvoices] = useState<InvoiceType[]>(() => db.invoices.getAll());
+    const [availableSites, setAvailableSites] = useState<any[]>([]);
+    const [selectedSiteId, setSelectedSiteId] = useState<string>('custom');
     const [activeTab, setActiveTab] = useState<'form' | 'saved'>('form');
     const [saveMsg, setSaveMsg] = useState('');
 
@@ -370,6 +372,9 @@ export const Invoice: React.FC = () => {
             setSelectedBankId(banks[0].id);
             setBankDetails(banks[0]);
         }
+        
+        const sites = db.sites.getAll();
+        setAvailableSites(sites);
     }, []);
 
     const subTotal = lineItems.reduce((sum, item) => sum + item.value, 0);
@@ -921,7 +926,34 @@ export const Invoice: React.FC = () => {
 
                         {/* Bill To */}
                         <div>
-                            <h3 className="font-bold text-slate-700 mb-3 text-sm uppercase tracking-wide">Bill To</h3>
+                            <div className="flex justify-between items-center mb-3">
+                                <h3 className="font-bold text-slate-700 text-sm uppercase tracking-wide">Bill To</h3>
+                                <select
+                                    className="border border-slate-300 rounded text-xs px-2 py-1 bg-white text-slate-700 font-medium cursor-pointer"
+                                    value={selectedSiteId}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        setSelectedSiteId(val);
+                                        if (val === 'custom') {
+                                            setClientName('');
+                                            setClientAddress('');
+                                            setClientGstNumber('');
+                                        } else {
+                                            const site = availableSites.find(s => s.id === val);
+                                            if (site) {
+                                                setClientName(site.clientName || site.name);
+                                                setClientAddress(`${site.name}\n${site.location}`);
+                                                setClientGstNumber(site.gstNo || '');
+                                            }
+                                        }
+                                    }}
+                                >
+                                    <option value="custom" className="font-bold text-primary">Custom / Manual Entry</option>
+                                    {availableSites.map(s => (
+                                        <option key={s.id} value={s.id}>{s.name} ({s.clientName})</option>
+                                    ))}
+                                </select>
+                            </div>
                             <div className="space-y-2">
                                 <div>
                                     <label className="block text-xs font-bold text-slate-500 mb-1">Client Name</label>
@@ -929,7 +961,10 @@ export const Invoice: React.FC = () => {
                                         type="text"
                                         className="w-full border rounded p-2 bg-slate-50 text-sm"
                                         value={clientName}
-                                        onChange={e => setClientName(e.target.value)}
+                                        onChange={e => {
+                                            setSelectedSiteId('custom');
+                                            setClientName(e.target.value);
+                                        }}
                                         placeholder="Client / Company Name"
                                     />
                                 </div>
@@ -938,24 +973,28 @@ export const Invoice: React.FC = () => {
                                     <textarea
                                         className="w-full border rounded p-2 bg-slate-50 text-sm h-16 resize-none"
                                         value={clientAddress}
-                                        onChange={e => setClientAddress(e.target.value)}
+                                        onChange={e => {
+                                            setSelectedSiteId('custom');
+                                            setClientAddress(e.target.value);
+                                        }}
                                         placeholder="Client Address"
                                     />
                                 </div>
-                                {invoiceType === 'with_gst' && (
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-500 mb-1">
-                                            Client GST Number
-                                        </label>
-                                        <input
-                                            type="text"
-                                            className="w-full border border-green-300 bg-green-50 rounded p-2 text-sm font-mono"
-                                            value={clientGstNumber}
-                                            onChange={e => setClientGstNumber(e.target.value)}
-                                            placeholder="Client GST Number"
-                                        />
-                                    </div>
-                                )}
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 mb-1">
+                                        Client GST Number
+                                    </label>
+                                    <input
+                                        type="text"
+                                        className="w-full border border-green-300 bg-green-50 rounded p-2 text-sm font-mono uppercase"
+                                        value={clientGstNumber}
+                                        onChange={e => {
+                                            setSelectedSiteId('custom');
+                                            setClientGstNumber(e.target.value);
+                                        }}
+                                        placeholder="Client GST Number"
+                                    />
+                                </div>
                             </div>
                         </div>
 

@@ -4,6 +4,7 @@ export interface Site {
   clientName: string;
   contactNumber: string;
   location: string;
+  gstNo?: string;
 }
 
 export interface Guard {
