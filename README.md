@@ -20,3 +20,5 @@ View your app in AI Studio: https://ai.studio/apps/drive/1ry8ifxqYoXxlSJ2EyHUXhl
    `npm run dev`
 4. Build the exe:
    'npm run build'
+5. If above cmd failed:
+6.  'npm run electron:build'
