@@ -135,7 +135,7 @@ const InvoicePreview: React.FC<PreviewProps> = ({
                     {company.phone && <span>Phone: {company.phone} | </span>}
                     {company.email && <span>Email: {company.email}</span>}
                     <div style={{ display: 'flex', gap: '40px', marginTop: '2px' }}>
-                        {company.gstNumber && <div>GSTNO: {company.gstNumber}</div>}
+                        {invoiceType === 'with_gst' && company.gstNumber && <div>GSTNO: {company.gstNumber}</div>}
                         {company.pan && <div>PAN No: {company.pan}</div>}
                     </div>
                     {invoiceType === 'with_gst' && company.sacCode && <div style={{ marginTop: '2px' }}>SAC CODE: {company.sacCode}</div>}
@@ -158,7 +158,7 @@ const InvoicePreview: React.FC<PreviewProps> = ({
             <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 'bold', fontSize: '14px', textTransform: 'uppercase' }}>{clientName || 'Client Name'}</div>
                 <div style={{ color: '#000', marginTop: '2px', whiteSpace: 'pre-line', fontSize: '12px', paddingLeft: '8px' }}>{clientAddress || 'Client Address'}</div>
-                {clientGstNumber && (
+                {invoiceType === 'with_gst' && clientGstNumber && (
                     <div style={{ marginTop: '12px', fontSize: '12px' }}>GSTNO: {clientGstNumber}</div>
                 )}
             </div>

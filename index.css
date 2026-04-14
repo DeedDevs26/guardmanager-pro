@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #1152d4;
+  --color-secondary: #f6f6f8;
+  --color-darkbg: #101622;
+  --color-success: #10b981;
+  --color-danger: #ef4444;
+  --color-warning: #f59e0b;
+  --font-sans: "Inter", "sans-serif";
+}
+
+/* Custom scrollbar for a desktop-app feel */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.no-print {
+  @media print {
+    display: none;
+  }
+}
+
+/* Local Fonts */
+
+@font-face {
+  font-family: 'Inter';
+  src: url('./src/assets/fonts/inter.woff2') format('woff2');
+  font-weight: 100 900;
+  font-display: swap;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Material Icons';
+  src: url('./src/assets/fonts/material-icons.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+  font-style: normal;
+}
+
+.material-icons {
+  font-family: 'Material Icons';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+}
+
