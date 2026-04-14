@@ -61,10 +61,13 @@ const newLineItem = (): InvoiceLineItem => ({
     value: 0,
 });
 
+const COMPANY_NAME_WITH_GST = 'BLACK CAT COMMANDO SECURITY FORCE';
+const COMPANY_NAME_WITHOUT_GST = 'BCCSF(Security Services)';
+
 // ─── Default Company (BLACK CAT COMMANDO SECURITY FORCE) ────────────────────
 
 const defaultCompany: InvoiceCompany = {
-    name: 'BLACK CAT COMMANDO SECURITY FORCE',
+    name: COMPANY_NAME_WITH_GST,
     address: 'No 5 18/414 PN Road, Puspa Bus Stop, Opp.\nSecond Floor, Tirupur – 641 602',
     phone: '9500427215',
     email: 'bccsec.force@gmail.com',
@@ -349,7 +352,7 @@ export const Invoice: React.FC = () => {
     const [invoiceNumber, setInvoiceNumber] = useState(generateInvoiceNumber());
     const [invoiceDate, setInvoiceDate] = useState(getTodayDate());
     const [invoiceType, setInvoiceType] = useState<'with_gst' | 'without_gst'>('without_gst');
-    const [company, setCompany] = useState<InvoiceCompany>(defaultCompany);
+    const [company, setCompany] = useState<InvoiceCompany>({ ...defaultCompany, name: COMPANY_NAME_WITHOUT_GST });
     const [clientName, setClientName] = useState('');
     const [clientAddress, setClientAddress] = useState('');
     const [clientGstNumber, setClientGstNumber] = useState('');
@@ -455,7 +458,7 @@ export const Invoice: React.FC = () => {
         setInvoiceNumber(generateInvoiceNumber());
         setInvoiceDate(getTodayDate());
         setInvoiceType('without_gst');
-        setCompany(defaultCompany);
+        setCompany({ ...defaultCompany, name: COMPANY_NAME_WITHOUT_GST });
         setClientName('');
         setClientAddress('');
         setClientGstNumber('');
@@ -823,13 +826,23 @@ export const Invoice: React.FC = () => {
                             <h3 className="font-bold text-slate-700 mb-3 text-sm uppercase tracking-wide">Invoice Type</h3>
                             <div className="flex gap-0 rounded-lg border border-slate-200 overflow-hidden w-fit">
                                 <button
-                                    onClick={() => setInvoiceType('without_gst')}
+                                    onClick={() => {
+                                        setInvoiceType('without_gst');
+                                        if (company.name === COMPANY_NAME_WITH_GST) {
+                                            setCompany({ ...company, name: COMPANY_NAME_WITHOUT_GST });
+                                        }
+                                    }}
                                     className={`px-5 py-2 text-sm font-semibold transition ${invoiceType === 'without_gst' ? 'bg-slate-700 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
                                 >
                                     Without GST
                                 </button>
                                 <button
-                                    onClick={() => setInvoiceType('with_gst')}
+                                    onClick={() => {
+                                        setInvoiceType('with_gst');
+                                        if (company.name === COMPANY_NAME_WITHOUT_GST) {
+                                            setCompany({ ...company, name: COMPANY_NAME_WITH_GST });
+                                        }
+                                    }}
                                     className={`px-5 py-2 text-sm font-semibold transition ${invoiceType === 'with_gst' ? 'bg-primary text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
                                 >
                                     With GST
