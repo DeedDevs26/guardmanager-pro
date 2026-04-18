@@ -45,3 +45,10 @@ def session_scope() -> Iterator[Session]:
 def get_db() -> Iterator[Session]:
     with session_scope() as session:
         yield session
+
+
+def close_engine() -> None:
+    """Disposes the engine to release all connection pools.
+    Essential on Windows before performing file-level operations on the DB.
+    """
+    engine.dispose()

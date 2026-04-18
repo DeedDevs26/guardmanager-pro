@@ -1,7 +1,7 @@
 import base64
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -88,16 +88,35 @@ def create_app() -> FastAPI:
     @app.post("/api/backup/run", response_model=StatusMessageSchema)
     def run_backup_now(db: Session = Depends(get_db)) -> StatusMessageSchema:
         try:
-            result = backup_manager.run_backup(db, repository.get_backup_settings(db))
-            return StatusMessageSchema(message="Backup completed", data={"run": result.model_dump()})
+            results = backup_manager.run_backup(db, repository.get_backup_settings(db))
+            return StatusMessageSchema(message="Backup completed", data={"history": [r.model_dump() for r in results]})
         except Exception as e:
-            # Most errors are logged in the BackupRun record by backup_manager,
-            # but we still want to report the error to the UI here.
             raise HTTPException(status_code=500, detail=f"Backup failed: {str(e)}")
 
     @app.get("/api/backup/history")
     def backup_history(db: Session = Depends(get_db)):
         return repository.list_backup_runs(db)
+
+    @app.post("/api/backup/restore/{backup_id}", response_model=StatusMessageSchema)
+    def restore_backup(backup_id: str):
+        try:
+            # Note: Restoring DB while FastAPI is running on it is tricky with SQLite.
+            # But since this is a desktop app, we'll try it.
+            backup_manager.restore_backup_bundle(backup_id)
+            return StatusMessageSchema(message="Data restored successfully. Please restart the application for changes to take full effect.")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Restore failed: {str(e)}")
+
+    @app.post("/api/backup/import", response_model=StatusMessageSchema)
+    def import_backup_file(payload: dict):
+        try:
+            path = payload.get("path")
+            if not path:
+                raise ValueError("No path provided")
+            backup_manager.import_database_file(path)
+            return StatusMessageSchema(message="Database imported successfully. Please restart the application.")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Import failed: {str(e)}")
 
     @app.get("/api/guards", response_model=list[GuardSchema])
     def get_guards(db: Session = Depends(get_db)):
@@ -205,10 +224,10 @@ def create_app() -> FastAPI:
         return repository.list_documents(db, guard_id)
 
     @app.post("/api/documents/upload", response_model=StatusMessageSchema)
-    async def upload_documents(guardId: str, documentType: str, files: list[UploadFile] = File(...), db: Session = Depends(get_db)):
+    async def upload_documents(guardId: str = Form(...), guardName: str = Form(...), documentType: str = Form(...), files: list[UploadFile] = File(...), db: Session = Depends(get_db)):
         saved = []
         for file in files:
-            document = await store_document(guardId, documentType, file)
+            document = await store_document(guardId, guardName, documentType, file)
             repository.save_document(db, document)
             saved.append(document.model_dump())
         return StatusMessageSchema(message="Documents uploaded", data={"documents": saved})

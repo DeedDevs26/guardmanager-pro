@@ -8,6 +8,7 @@ export const fileStorage = {
       const documentType = key.replace('idProof', '').toLowerCase() || 'other';
       const formData = new FormData();
       formData.append('guardId', guardId);
+      formData.append('guardName', guardName);
       formData.append('documentType', documentType);
       fileList.forEach(file => formData.append('files', file));
       await postForm('/api/documents/upload', formData);

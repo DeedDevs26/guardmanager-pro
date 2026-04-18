@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
@@ -9,6 +10,11 @@ from fastapi import UploadFile
 
 from ..config import PATHS
 from ..schemas import GuardDocumentSchema
+
+
+def _sanitize_name(name: str) -> str:
+    """Removes non-alphanumeric characters and replaces spaces with underscores."""
+    return re.sub(r'[^a-zA-Z0-9]', '_', name).strip('_')
 
 
 def _checksum(data: bytes) -> str:
@@ -21,10 +27,16 @@ def _folder_for(guard_id: str, document_type: str) -> Path:
     return folder
 
 
-async def store_document(guard_id: str, document_type: str, file: UploadFile) -> GuardDocumentSchema:
+async def store_document(guard_id: str, guard_name: str, document_type: str, file: UploadFile) -> GuardDocumentSchema:
     content = await file.read()
     suffix = Path(file.filename or "").suffix
-    stored_name = f"{uuid4().hex}{suffix}"
+    
+    # Create a readable stored name: GuardName_DocType_uuid.suffix
+    safe_name = _sanitize_name(guard_name)
+    safe_type = _sanitize_name(document_type)
+    short_uuid = uuid4().hex[:8] 
+    stored_name = f"{safe_name}_{safe_type}_{short_uuid}{suffix}"
+    
     folder = _folder_for(guard_id, document_type)
     target = folder / stored_name
     target.write_bytes(content)

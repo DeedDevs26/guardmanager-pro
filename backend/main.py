@@ -34,6 +34,12 @@ class Bridge:
         result = self._window.create_file_dialog(webview.FOLDER_DIALOG)
         return result[0] if result else None
 
+    def pick_file(self):
+        if not self._window:
+            return None
+        result = self._window.create_file_dialog(webview.OPEN_DIALOG, file_types=('Data Base Files (*.db)', 'All files (*.*)'))
+        return result[0] if result else None
+
 
 def run_server(port: int) -> None:
     uvicorn.run(create_app(), host="127.0.0.1", port=port, log_level="info")

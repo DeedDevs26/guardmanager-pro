@@ -4,8 +4,10 @@ import shutil
 from datetime import datetime
 
 from sqlalchemy.orm import Session
+from pathlib import Path
 
 from ..config import PATHS
+from ..database import close_engine
 from ..schemas import BackupSettingsSchema
 from . import repository
 from .drive_backup import create_database_snapshot, upload_file_to_drive
@@ -42,7 +44,55 @@ def cleanup_old_backups(keep_count: int = 10) -> None:
                 pass
 
 
-def run_backup(session: Session, settings: BackupSettingsSchema) -> repository.BackupRunSchema:
+def restore_backup_bundle(backup_id: str) -> None:
+    """Restores database and documents from a local backup folder/file."""
+    stamp = backup_id 
+    db_file = PATHS.backups_dir / f"guardmanager-{stamp}.db"
+    doc_dir = PATHS.backups_dir / f"documents-{stamp}"
+    
+    if not db_file.exists():
+        raise FileNotFoundError(f"Backup DB file not found: {db_file}")
+
+    # 1. Restore Database
+    # Close active engine to release file locks on Windows
+    close_engine()
+    
+    # Remove WAL files if present to ensure clean swap
+    for suffix in ["-wal", "-shm"]:
+        extra = Path(str(PATHS.database_file) + suffix)
+        if extra.exists():
+            extra.unlink()
+
+    shutil.copy2(db_file, PATHS.database_file)
+    
+    # 2. Restore Documents if present
+    if doc_dir.exists():
+        # Clear current documents
+        if PATHS.documents_dir.exists():
+            shutil.rmtree(PATHS.documents_dir)
+        shutil.copytree(doc_dir, PATHS.documents_dir, dirs_exist_ok=True)
+
+
+def import_database_file(file_path: str) -> None:
+    """Safely replaces the current database with an external .db file."""
+    source = Path(file_path)
+    if not source.exists():
+        raise FileNotFoundError(f"File not found: {file_path}")
+    
+    # Close active engine to release file locks on Windows
+    close_engine()
+
+    # Remove WAL files if present to ensure clean swap
+    for suffix in ["-wal", "-shm"]:
+        extra = Path(str(PATHS.database_file) + suffix)
+        if extra.exists():
+            extra.unlink()
+
+    # Simple copy over active DB
+    shutil.copy2(source, PATHS.database_file)
+
+
+def run_backup(session: Session, settings: BackupSettingsSchema) -> list[repository.BackupRunSchema]:
     destination = "google_drive" if settings.driveEnabled else "local"
     run = repository.create_backup_run(session, destination=destination)
     files_uploaded = 0
@@ -79,4 +129,4 @@ def run_backup(session: Session, settings: BackupSettingsSchema) -> repository.B
         repository.finish_backup_run(session, run.id, status="failed", error_message=str(exc), files_uploaded=files_uploaded, bytes_uploaded=bytes_uploaded)
         raise
 
-    return repository.list_backup_runs(session)[0]
+    return repository.list_backup_runs(session)
