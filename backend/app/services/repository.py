@@ -123,7 +123,7 @@ def list_attendance(session: Session) -> list[AttendanceRecordSchema]:
         AttendanceRecordSchema(
             id=r.id,
             guardId=r.guard_id,
-            siteId=r.site_id,
+            siteIds=r.site_id.split(",") if r.site_id else [],
             date=r.date,
             morning=loads(r.morning_json),
             evening=loads(r.evening_json),
@@ -141,7 +141,7 @@ def save_attendance(session: Session, payload: AttendanceRecordSchema) -> Attend
         AttendanceRecordModel(
             id=record_id,
             guard_id=payload.guardId,
-            site_id=payload.siteId,
+            site_id=",".join(payload.siteIds),
             date=payload.date,
             morning_json=dumps(payload.morning.model_dump()),
             evening_json=dumps(payload.evening.model_dump()),

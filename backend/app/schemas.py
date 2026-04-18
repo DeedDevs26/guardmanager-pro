@@ -40,7 +40,7 @@ class ShiftStatusSchema(BaseModel):
 class AttendanceRecordSchema(BaseModel):
     id: str = ""
     guardId: str
-    siteId: str
+    siteIds: list[str] = []
     date: str
     morning: ShiftStatusSchema
     evening: ShiftStatusSchema

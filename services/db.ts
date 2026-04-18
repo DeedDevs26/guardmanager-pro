@@ -73,7 +73,7 @@ export const db = {
   },
   attendance: {
     getAll: () => cache.attendance,
-    getByDateAndSite: (date: string, siteId: string) => cache.attendance.filter(record => record.date === date && record.siteId === siteId),
+    getByDateAndSite: (date: string, siteId: string) => cache.attendance.filter(record => record.date === date && record.siteIds.includes(siteId)),
     saveRecord: async (record: AttendanceRecord) => {
       const recordId = record.id || `${record.guardId}_${record.date}`;
       const nextRecord = { ...record, id: recordId };

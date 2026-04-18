@@ -33,7 +33,7 @@ export interface ShiftStatus {
 export interface AttendanceRecord {
   id: string;
   guardId: string;
-  siteId: string;
+  siteIds: string[];
   date: string; // YYYY-MM-DD
   morning: ShiftStatus;
   evening: ShiftStatus;
