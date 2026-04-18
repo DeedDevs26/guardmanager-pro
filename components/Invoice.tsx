@@ -10,18 +10,34 @@ import { qrWithGst, qrWithoutGst } from './qrCodesBase64';
 
 const getTodayDate = () => new Date().toISOString().split('T')[0];
 
-const getFinancialYear = (): string => {
+const getFinancialYearFormat = (): string => {
     const now = new Date();
     const month = now.getMonth() + 1;
     const year = now.getFullYear();
-    if (month >= 4) return `${year}-${String(year + 1).slice(2)}`;
-    return `${year - 1}-${String(year).slice(2)}`;
+    const startYear = month >= 4 ? year : year - 1;
+    const endYear = startYear + 1;
+    return `${String(startYear).slice(2)}-${String(endYear).slice(2)}`;
 };
 
-const generateInvoiceNumber = (): string => {
-    const fy = getFinancialYear();
-    const rand = Math.floor(1000 + Math.random() * 9000);
-    return `INV/${fy}/${rand}`;
+const generateInvoiceNumber = (existingInvoices: InvoiceType[] = []): string => {
+    const fy = getFinancialYearFormat();
+    const prefix = `INV/${fy}/`;
+    
+    const fyInvoices = existingInvoices.filter(inv => inv.invoiceNumber && inv.invoiceNumber.startsWith(prefix));
+    let maxSerial = 0;
+    
+    fyInvoices.forEach(inv => {
+        const parts = inv.invoiceNumber.split('/');
+        if (parts.length === 3) {
+            const serial = parseInt(parts[2], 10);
+            if (!isNaN(serial) && serial > maxSerial) {
+                maxSerial = serial;
+            }
+        }
+    });
+    
+    const nextSerial = maxSerial + 1;
+    return `${prefix}${String(nextSerial).padStart(2, '0')}`;
 };
 
 const numberToWordsIndian = (num: number): string => {
@@ -350,7 +366,7 @@ const SavedInvoicesList: React.FC<SavedInvoicesProps> = ({ invoices, onDelete, o
 export const Invoice: React.FC = () => {
     const previewRef = useRef<HTMLDivElement>(null!);
 
-    const [invoiceNumber, setInvoiceNumber] = useState(generateInvoiceNumber());
+    const [invoiceNumber, setInvoiceNumber] = useState(() => generateInvoiceNumber(db.invoices.getAll()));
     const [invoiceDate, setInvoiceDate] = useState(getTodayDate());
     const [invoiceType, setInvoiceType] = useState<'with_gst' | 'without_gst'>('without_gst');
     const [company, setCompany] = useState<InvoiceCompany>({ ...defaultCompany, name: COMPANY_NAME_WITHOUT_GST });
@@ -425,9 +441,21 @@ export const Invoice: React.FC = () => {
             createdAt: new Date().toISOString(),
         };
         db.invoices.add(invoice);
-        setSavedInvoices(db.invoices.getAll());
+        const updatedInvoices = db.invoices.getAll();
+        setSavedInvoices(updatedInvoices);
         setSaveMsg('Invoice saved!');
-        setTimeout(() => setSaveMsg(''), 2500);
+        
+        // Auto-prepare next invoice
+        setTimeout(() => {
+            setSaveMsg('');
+            setInvoiceNumber(generateInvoiceNumber(updatedInvoices));
+            setInvoiceDate(getTodayDate());
+            // Keep current type and company, but clear client
+            setClientName('');
+            setClientAddress('');
+            setClientGstNumber('');
+            setLineItems([newLineItem()]);
+        }, 1500);
     };
 
     // ── Load saved invoice into form ──
@@ -456,7 +484,7 @@ export const Invoice: React.FC = () => {
 
     // ── New Invoice ──
     const handleNew = () => {
-        setInvoiceNumber(generateInvoiceNumber());
+        setInvoiceNumber(generateInvoiceNumber(db.invoices.getAll()));
         setInvoiceDate(getTodayDate());
         setInvoiceType('without_gst');
         setCompany({ ...defaultCompany, name: COMPANY_NAME_WITHOUT_GST });
