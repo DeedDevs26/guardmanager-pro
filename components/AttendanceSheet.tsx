@@ -4,33 +4,25 @@ import { Guard, Site, AttendanceRecord, ShiftStatus } from '../types';
 
 export const AttendanceSheet: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [selectedSiteId, setSelectedSiteId] = useState('');
   const [sites, setSites] = useState<Site[]>([]);
   const [guards, setGuards] = useState<Guard[]>([]);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
 
   useEffect(() => {
     setSites(db.sites.getAll());
+    // Load all active guards once on mount
+    setGuards(db.guards.getAll().filter(g => g.status === 'Active'));
   }, []);
 
   useEffect(() => {
-    if (selectedSiteId) {
-      // Load guards for this site
-      const siteGuards = db.guards.getAll().filter(g => g.siteId === selectedSiteId && g.status === 'Active');
-      setGuards(siteGuards);
-      
-      // Load existing records for date and site
-      const existing = db.attendance.getByDateAndSite(selectedDate, selectedSiteId);
-      setRecords(existing);
-    } else {
-      setGuards([]);
-      setRecords([]);
-    }
-  }, [selectedDate, selectedSiteId]);
+    // Load existing records for the selected date across ALL sites
+    const existing = db.attendance.getAll().filter(r => r.date === selectedDate);
+    setRecords(existing);
+  }, [selectedDate]);
 
-  const getRecord = (guardId: string): AttendanceRecord => {
-    return records.find(r => r.guardId === guardId) || {
-      id: '', guardId, siteId: selectedSiteId, date: selectedDate,
+  const getRecord = (guard: Guard): AttendanceRecord => {
+    return records.find(r => r.guardId === guard.id) || {
+      id: '', guardId: guard.id, siteId: guard.siteId, date: selectedDate,
       morning: { status: 'Unmarked', foodTaken: false },
       evening: { status: 'Unmarked', foodTaken: false },
       night: { status: 'Unmarked', foodTaken: false },
@@ -39,13 +31,18 @@ export const AttendanceSheet: React.FC = () => {
   };
 
   const updateRecord = (guardId: string, updates: Partial<AttendanceRecord>) => {
-    const current = getRecord(guardId);
+    // We need the latest record or a fresh one
+    const guardData = guards.find(g => g.id === guardId);
+    if (!guardData) return;
+
+    const current = getRecord(guardData);
     const updated = { ...current, ...updates };
     
     // Save to local state
-    const newRecords = records.filter(r => r.guardId !== guardId);
-    newRecords.push(updated);
-    setRecords(newRecords);
+    setRecords(prev => {
+        const otherRecords = prev.filter(r => r.guardId !== guardId);
+        return [...otherRecords, updated];
+    });
 
     // Save to DB immediately (Offline first UX)
     db.attendance.saveRecord(updated);
@@ -76,29 +73,16 @@ export const AttendanceSheet: React.FC = () => {
             value={selectedDate}
             onChange={e => setSelectedDate(e.target.value)}
           />
-          <div className="w-px bg-slate-200"></div>
-          <select 
-            className="border-none focus:ring-0 text-slate-700 font-bold bg-transparent w-48"
-            value={selectedSiteId}
-            onChange={e => setSelectedSiteId(e.target.value)}
-          >
-            <option value="">Select Site...</option>
-            {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
         </div>
       </div>
 
-      {!selectedSiteId ? (
-        <div className="flex-1 flex items-center justify-center bg-slate-50 rounded-xl border-2 border-dashed border-slate-200">
-          <p className="text-slate-400">Please select a site to mark attendance</p>
-        </div>
-      ) : (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
           <div className="overflow-auto flex-1">
             <table className="w-full text-left border-collapse">
               <thead className="bg-slate-50 sticky top-0 z-10">
                 <tr>
                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase sticky left-0 bg-slate-50">Guard Name</th>
+                  <th className="px-4 py-4 text-xs font-bold text-slate-500 uppercase border-l border-slate-200">Site</th>
                   <th className="px-4 py-4 text-xs font-bold text-slate-500 uppercase text-center border-l border-slate-200">Morning</th>
                   <th className="px-4 py-4 text-xs font-bold text-slate-500 uppercase text-center border-l border-slate-200">Evening</th>
                   <th className="px-4 py-4 text-xs font-bold text-slate-500 uppercase text-center border-l border-slate-200">Night</th>
@@ -107,12 +91,23 @@ export const AttendanceSheet: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {guards.map(guard => {
-                  const record = getRecord(guard.id);
+                  const record = getRecord(guard);
                   return (
                     <tr key={guard.id} className="hover:bg-slate-50">
                       <td className="px-6 py-4 text-sm font-bold text-slate-700 sticky left-0 bg-white hover:bg-slate-50">
                         {guard.name}
                         <div className="text-xs text-slate-400 font-normal">{guard.code}</div>
+                      </td>
+
+                      <td className="px-4 py-4 border-l border-slate-100">
+                        <select 
+                          className="w-full border-none focus:ring-0 bg-slate-50 rounded p-1 text-sm font-medium text-slate-600"
+                          value={record.siteId}
+                          onChange={e => updateRecord(guard.id, { siteId: e.target.value })}
+                        >
+                          <option value="">Select Site...</option>
+                          {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                        </select>
                       </td>
                       
                       {['morning', 'evening', 'night'].map((shift) => {
@@ -174,8 +169,7 @@ export const AttendanceSheet: React.FC = () => {
               <span className="flex items-center gap-1"><span className="w-3 h-3 bg-slate-200 rounded"></span> Unmarked</span>
             </div>
           </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 };
