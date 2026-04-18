@@ -140,8 +140,8 @@ class BackupSettingsSchema(BaseModel):
     backupFrequency: str = "daily"
     includeDatabase: bool = True
     includeDocuments: bool = True
-    googleCredentialsPath: str = ""
     googleDriveFolderName: str = "GuardManager Pro"
+    pdfExportPath: str = ""
 
 
 class StorageSettingsSchema(BaseModel):
@@ -153,7 +153,6 @@ class StorageSettingsSchema(BaseModel):
 
 class DriveStatusSchema(BaseModel):
     connected: bool = False
-    credentialsPath: str = ""
     folderName: str = "GuardManager Pro"
     lastError: str | None = None
 
@@ -184,6 +183,11 @@ class SettingsResponseSchema(BaseModel):
     backup: BackupSettingsSchema
     drive: DriveStatusSchema
     history: list[BackupRunSchema]
+
+
+class PDFExportSchema(BaseModel):
+    filename: str
+    base64: str
 
 
 class StatusMessageSchema(BaseModel):

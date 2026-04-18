@@ -1,4 +1,5 @@
-from __future__ import annotations
+import base64
+from pathlib import Path
 
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,6 +19,7 @@ from .schemas import (
     ExpenseRecordSchema,
     GuardSchema,
     InvoiceSchema,
+    PDFExportSchema,
     SettingsResponseSchema,
     SiteSchema,
     StatusMessageSchema,
@@ -68,20 +70,30 @@ def create_app() -> FastAPI:
 
     @app.post("/api/drive/connect", response_model=DriveStatusSchema)
     def drive_connect(db: Session = Depends(get_db)) -> DriveStatusSchema:
-        settings = repository.get_backup_settings(db)
-        status = connect_google_drive(settings.googleCredentialsPath)
-        return repository.save_drive_status(db, status)
+        try:
+            status = connect_google_drive()
+            return repository.save_drive_status(db, status)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to connect Google Drive: {str(e)}")
 
     @app.post("/api/drive/disconnect", response_model=StatusMessageSchema)
     def drive_disconnect(db: Session = Depends(get_db)) -> StatusMessageSchema:
-        disconnect_google_drive()
-        repository.save_drive_status(db, DriveStatusSchema(connected=False, credentialsPath=repository.get_backup_settings(db).googleCredentialsPath))
-        return StatusMessageSchema(message="Google Drive disconnected")
+        try:
+            disconnect_google_drive()
+            repository.save_drive_status(db, DriveStatusSchema(connected=False))
+            return StatusMessageSchema(message="Google Drive disconnected")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to disconnect: {str(e)}")
 
     @app.post("/api/backup/run", response_model=StatusMessageSchema)
     def run_backup_now(db: Session = Depends(get_db)) -> StatusMessageSchema:
-        result = backup_manager.run_backup(db, repository.get_backup_settings(db))
-        return StatusMessageSchema(message="Backup completed", data={"run": result.model_dump()})
+        try:
+            result = backup_manager.run_backup(db, repository.get_backup_settings(db))
+            return StatusMessageSchema(message="Backup completed", data={"run": result.model_dump()})
+        except Exception as e:
+            # Most errors are logged in the BackupRun record by backup_manager,
+            # but we still want to report the error to the UI here.
+            raise HTTPException(status_code=500, detail=f"Backup failed: {str(e)}")
 
     @app.get("/api/backup/history")
     def backup_history(db: Session = Depends(get_db)):
@@ -222,6 +234,27 @@ def create_app() -> FastAPI:
                 file_path.unlink()
         repository.delete_document(db, document_id)
         return StatusMessageSchema(message="Document deleted")
+
+    @app.post("/api/export/pdf", response_model=StatusMessageSchema)
+    def export_pdf(payload: PDFExportSchema, db: Session = Depends(get_db)):
+        try:
+            settings = repository.get_backup_settings(db)
+            export_path = Path(settings.pdfExportPath or PATHS.exports_dir)
+            export_path.mkdir(parents=True, exist_ok=True)
+            
+            file_path = export_path / payload.filename
+            
+            # Remove header if present (data:application/pdf;base64,...)
+            b64_data = payload.base64
+            if "," in b64_data:
+                b64_data = b64_data.split(",")[1]
+            
+            with open(file_path, "wb") as f:
+                f.write(base64.b64decode(b64_data))
+                
+            return StatusMessageSchema(message=f"PDF saved to {file_path}", data={"path": str(file_path)})
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to save PDF: {str(e)}")
 
     if PATHS.frontend_dist.exists():
         app.mount("/", StaticFiles(directory=PATHS.frontend_dist, html=True), name="frontend")

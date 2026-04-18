@@ -150,8 +150,8 @@ export interface BackupSettings {
   backupFrequency: string;
   includeDatabase: boolean;
   includeDocuments: boolean;
-  googleCredentialsPath: string;
   googleDriveFolderName: string;
+  pdfExportPath: string;
 }
 
 export interface StorageSettings {

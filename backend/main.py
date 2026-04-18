@@ -21,6 +21,20 @@ def _free_port() -> int:
         return sock.getsockname()[1]
 
 
+class Bridge:
+    def __init__(self):
+        self._window = None
+
+    def set_window(self, window):
+        self._window = window
+
+    def pick_folder(self):
+        if not self._window:
+            return None
+        result = self._window.create_file_dialog(webview.FOLDER_DIALOG)
+        return result[0] if result else None
+
+
 def run_server(port: int) -> None:
     uvicorn.run(create_app(), host="127.0.0.1", port=port, log_level="info")
 
@@ -53,7 +67,9 @@ def main() -> None:
         server_thread.join()
         return
 
-    webview.create_window("GuardManager Pro", base_url, width=1280, height=860, min_size=(1100, 720))
+    bridge = Bridge()
+    window = webview.create_window("GuardManager Pro", base_url, width=1280, height=860, min_size=(1100, 720), js_api=bridge)
+    bridge.set_window(window)
     webview.start(private_mode=False)
 
 

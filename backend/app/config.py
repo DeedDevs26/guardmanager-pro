@@ -22,6 +22,7 @@ class AppPaths:
     tokens_dir: Path
     frontend_dist: Path
     google_credentials_default: Path
+    exports_dir: Path
 
 
 def get_paths() -> AppPaths:
@@ -44,6 +45,7 @@ def get_paths() -> AppPaths:
         tokens_dir=app_data / "tokens",
         frontend_dist=frontend_dist,
         google_credentials_default=app_data / "google_credentials.json",
+        exports_dir=app_data / "exports",
     )
 
 
@@ -57,5 +59,6 @@ def ensure_directories() -> None:
         PATHS.documents_dir,
         PATHS.backups_dir,
         PATHS.tokens_dir,
+        PATHS.exports_dir,
     ):
         path.mkdir(parents=True, exist_ok=True)

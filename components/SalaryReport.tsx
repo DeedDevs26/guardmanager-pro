@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import jsPDF from 'jspdf';
 import { db } from '../services/db';
+import { postJson } from '../services/api';
 import { SalarySlip } from '../types';
 
 const fmt = (n: number) => `Rs.${n.toLocaleString('en-IN')}`;
@@ -97,6 +98,7 @@ export const SalaryReport: React.FC = () => {
   // ── Print (popup window) ──
   const handlePrint = () => {
     if (slips.length === 0) { alert('Please calculate the report first.'); return; }
+    
     const totalGross = slips.reduce((a, b) => a + b.grossSalary, 0);
     const totalAdv = slips.reduce((a, b) => a + b.totalAdvance, 0);
     const totalOth = slips.reduce((a, b) => a + b.totalOthers, 0);
@@ -106,61 +108,116 @@ export const SalaryReport: React.FC = () => {
     const totalShifts = slips.reduce((a, b) => a + b.totalShifts, 0);
 
     const rows = slips.map((s, i) => `
-      <tr style="background:${i % 2 === 0 ? '#f8faff' : '#fff'}">
-        <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;font-weight:600">${s.guardName}</td>
-        <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;text-align:center">${s.totalShifts}</td>
-        <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;text-align:right">${fmt(s.grossSalary)}</td>
-        <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;text-align:right;color:#dc2626">- ${fmt(s.totalAdvance)}</td>
-        <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;text-align:right;color:#dc2626">- ${fmt(s.totalFoodCost)}</td>
-        <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;text-align:right;color:#dc2626">- ${fmt(s.uniformDeduction)}</td>
-        <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;text-align:right;color:#dc2626">- ${fmt(s.totalOthers)}</td>
-        <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:700;color:#1152d4">${fmt(s.netSalary)}</td>
+      <tr style="background:${i % 2 === 0 ? '#ffffff' : '#f9fafb'}">
+        <td style="padding:12px 15px;border-bottom:1px solid #edf2f7;font-weight:600;color:#2d3748">${s.guardName}</td>
+        <td style="padding:12px 15px;border-bottom:1px solid #edf2f7;text-align:center;color:#4a5568">${s.totalShifts}</td>
+        <td style="padding:12px 15px;border-bottom:1px solid #edf2f7;text-align:right;color:#2d3748">${fmt(s.grossSalary)}</td>
+        <td style="padding:12px 15px;border-bottom:1px solid #edf2f7;text-align:right;color:#e53e3e">- ${fmt(s.totalAdvance)}</td>
+        <td style="padding:12px 15px;border-bottom:1px solid #edf2f7;text-align:right;color:#e53e3e">- ${fmt(s.totalFoodCost)}</td>
+        <td style="padding:12px 15px;border-bottom:1px solid #edf2f7;text-align:right;color:#e53e3e">- ${fmt(s.uniformDeduction)}</td>
+        <td style="padding:12px 15px;border-bottom:1px solid #edf2f7;text-align:right;color:#e53e3e">- ${fmt(s.totalOthers)}</td>
+        <td style="padding:12px 15px;border-bottom:1px solid #edf2f7;text-align:right;font-weight:700;color:#1a365d">${fmt(s.netSalary)}</td>
       </tr>`).join('');
 
     const html = `
-      <html><head><title>Salary Report – ${rangeLabel}</title>
-      <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: Arial, sans-serif; font-size: 12px; color: #1a1a1a; padding: 30px; }
-        @media print { body { padding: 10px; } }
-        h1 { font-size: 22px; color: #1152d4; letter-spacing: 1px; }
-        .sub { color: #555; font-size: 11px; margin-top: 2px; }
-        .badge { background:#e8f0ff;color:#1152d4;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;border:1px solid #c7d7f5; }
-        .divider { border: none; border-top: 2px solid #1152d4; margin: 14px 0; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        thead tr { background: #1152d4; color: #fff; }
-        th { padding: 9px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
-        tfoot tr { background: #1a1a2e; color: #fff; }
-        tfoot td { padding: 9px 12px; font-weight: 700; }
-        .footer { margin-top: 30px; text-align: center; font-size: 10px; color: #999; border-top: 1px solid #e2e8f0; padding-top: 10px; }
-      </style></head>
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Salary Report – ${rangeLabel}</title>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
+        <style>
+          * { box-sizing: border-box; margin: 0; padding: 0; -webkit-print-color-adjust: exact; }
+          body { 
+            font-family: 'Inter', sans-serif; 
+            font-size: 11px; 
+            color: #1a202c; 
+            background: white;
+            padding: 40px;
+          }
+          @page { size: A4 landscape; margin: 0; }
+          @media print { body { padding: 20px; } }
+          
+          .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 25px; }
+          .brand h1 { font-family: 'Outfit', sans-serif; font-size: 26px; color: #1a365d; letter-spacing: -0.5px; }
+          .brand .tagline { font-size: 10px; color: #718096; text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
+          
+          .report-meta { text-align: right; }
+          .badge { 
+            display: inline-block;
+            background: #ebf8ff; 
+            color: #2b6cb0; 
+            padding: 4px 12px; 
+            border-radius: 6px; 
+            font-weight: 700; 
+            font-size: 9px;
+            border: 1px solid #bee3f8;
+            margin-bottom: 5px;
+          }
+          .period { font-size: 12px; font-weight: 600; color: #2d3748; }
+          .gen-date { font-size: 9px; color: #a0aec0; margin-top: 3px; }
+
+          .divider { height: 4px; background: linear-gradient(to right, #2b6cb0, #4299e1); border-radius: 2px; margin: 20px 0; border: none; }
+
+          table { width: 100%; border-collapse: collapse; overflow: hidden; border-radius: 8px; border: 1px solid #e2e8f0; }
+          thead th { 
+            background: #1a365d; 
+            color: white; 
+            padding: 12px 15px; 
+            font-size: 10px; 
+            font-weight: 700; 
+            text-transform: uppercase; 
+            letter-spacing: 0.5px;
+            text-align: center;
+          }
+          th.text-left { text-align: left; }
+          th.text-right { text-align: right; }
+
+          tfoot tr { background: #2d3748; color: white; }
+          tfoot td { padding: 12px 15px; font-weight: 700; font-size: 11px; border-top: 2px solid #1a202c; }
+
+          .footer { 
+            margin-top: 40px; 
+            padding-top: 15px;
+            border-top: 1px solid #edf2f7;
+            display: flex;
+            justify-content: space-between;
+            font-size: 9px;
+            color: #a0aec0;
+          }
+        </style>
+      </head>
       <body>
-        <div style="display:flex;justify-content:space-between;align-items:flex-start">
-          <div>
+        <div class="header">
+          <div class="brand">
             <h1>GuardManager Pro</h1>
-            <div class="sub">Salary Report  —  ${rangeLabel}</div>
-            <div class="sub">Generated on: ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
+            <div class="tagline">Offline Security Management System</div>
           </div>
-          <div class="badge">OFFICIAL SALARY STATEMENT</div>
+          <div class="report-meta">
+            <div class="badge">OFFICIAL SALARY STATEMENT</div>
+            <div class="period">${rangeLabel}</div>
+            <div class="gen-date">Generated: ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
+          </div>
         </div>
+        
         <hr class="divider"/>
+        
         <table>
           <thead>
             <tr>
-              <th style="text-align:left">Guard Name</th>
-              <th style="text-align:center">Shifts</th>
-              <th style="text-align:right">Gross Salary</th>
-              <th style="text-align:right">Advance</th>
-              <th style="text-align:right">Food Ded.</th>
-              <th style="text-align:right">Uniform</th>
-              <th style="text-align:right">Others</th>
-              <th style="text-align:right">Net Salary</th>
+              <th class="text-left">Guard Personnel</th>
+              <th>Shifts</th>
+              <th class="text-right">Gross Salary</th>
+              <th class="text-right">Advance</th>
+              <th class="text-right">Food Ded.</th>
+              <th class="text-right">Uniform</th>
+              <th class="text-right">Others</th>
+              <th class="text-right">Net Payable</th>
             </tr>
           </thead>
           <tbody>${rows}</tbody>
           <tfoot>
             <tr>
-              <td>TOTALS</td>
+              <td style="text-align:left">COMBINED TOTALS</td>
               <td style="text-align:center">${totalShifts}</td>
               <td style="text-align:right">${fmt(totalGross)}</td>
               <td style="text-align:right">${fmt(totalAdv)}</td>
@@ -171,16 +228,39 @@ export const SalaryReport: React.FC = () => {
             </tr>
           </tfoot>
         </table>
-        <div class="footer">GuardManager Pro &nbsp;|&nbsp; Offline Desktop System &nbsp;|&nbsp; ${new Date().toLocaleDateString()}</div>
-      </body></html>`;
+        
+        <div class="footer">
+          <div>Report Fingerprint: ${Math.random().toString(36).substring(2, 10).toUpperCase()}</div>
+          <div>© ${new Date().getFullYear()} GuardManager Pro &nbsp; | &nbsp; Authorized Report Copy</div>
+        </div>
+      </body>
+      </html>`;
 
-    const win = window.open('', '_blank', 'width=960,height=720');
-    if (!win) return;
-    win.document.write(html);
-    win.document.close();
-    win.focus();
-    setTimeout(() => { win.print(); win.close(); }, 350);
+    // Modern Direct Print Fix: Use hidden iframe to bypass browser window issues
+    let iframe = document.getElementById('print-iframe') as HTMLIFrameElement;
+    if (!iframe) {
+      iframe = document.createElement('iframe');
+      iframe.id = 'print-iframe';
+      iframe.style.position = 'absolute';
+      iframe.style.width = '0px';
+      iframe.style.height = '0px';
+      iframe.style.border = 'none';
+      document.body.appendChild(iframe);
+    }
+    
+    const doc = iframe.contentWindow?.document || iframe.contentDocument;
+    if (!doc) return;
+    
+    doc.open();
+    doc.write(html);
+    doc.close();
+    
+    setTimeout(() => { 
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+    }, 600);
   };
+
 
   // ── Per-guard Slip PDF ──
   const downloadGuardSlip = (slip: SalarySlip) => {
@@ -286,7 +366,12 @@ export const SalaryReport: React.FC = () => {
     doc.setTextColor(...gray);
     doc.text('This is a computer-generated salary slip. No signature required if digitally authorized.', pageW / 2, y, { align: 'center' });
 
-    doc.save(`Slip-${slip.guardName.replace(/\s+/g, '_')}-${fromDate}-to-${toDate}.pdf`);
+    const filename = `Slip-${slip.guardName.replace(/\s+/g, '_')}-${fromDate}-to-${toDate}.pdf`;
+    const base64 = doc.output('datauristring');
+    
+    postJson('/api/export/pdf', { filename, base64 })
+      .then(() => alert(`Slip saved to configured exports folder as ${filename}`))
+      .catch(err => alert('Failed to save PDF: ' + (err instanceof Error ? err.message : String(err))));
   };
 
   // ── All-guards PDF Download ──
@@ -443,7 +528,12 @@ export const SalaryReport: React.FC = () => {
     doc.setTextColor(...gray);
     doc.text('GuardManager Pro  |  Offline Desktop System  |  Confidential', pageW / 2, y, { align: 'center' });
 
-    doc.save(`Salary-Report-${fromDate}-to-${toDate}.pdf`);
+    const filename = `Salary-Report-${fromDate}-to-${toDate}.pdf`;
+    const base64 = doc.output('datauristring');
+
+    postJson('/api/export/pdf', { filename, base64 })
+      .then(() => alert(`Report saved to configured exports folder as ${filename}`))
+      .catch(err => alert('Failed to save PDF: ' + (err instanceof Error ? err.message : String(err))));
   };
 
   return (

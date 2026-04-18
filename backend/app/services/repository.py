@@ -37,12 +37,14 @@ from ..schemas import (
 from ..utils.serializers import dumps, loads
 
 
-DEFAULT_BACKUP_SETTINGS = BackupSettingsSchema(googleCredentialsPath=PATHS.google_credentials_default.as_posix())
-DEFAULT_DRIVE_STATUS = DriveStatusSchema(credentialsPath=PATHS.google_credentials_default.as_posix())
+DEFAULT_BACKUP_SETTINGS = BackupSettingsSchema(
+    pdfExportPath=(PATHS.app_data / "exports").as_posix()
+)
+DEFAULT_DRIVE_STATUS = DriveStatusSchema()
 
 
 def _now_iso() -> str:
-    return datetime.utcnow().isoformat()
+    return datetime.now().isoformat()
 
 
 def _upsert(session: Session, model) -> None:
@@ -360,7 +362,7 @@ def save_drive_status(session: Session, payload: DriveStatusSchema) -> DriveStat
 
 
 def update_runtime_state(session: Session, key: str, value: str) -> None:
-    _upsert(session, RuntimeStateModel(key=key, value=value, updated_at=datetime.utcnow()))
+    _upsert(session, RuntimeStateModel(key=key, value=value, updated_at=datetime.now()))
 
 
 def seed_defaults(session: Session) -> None:

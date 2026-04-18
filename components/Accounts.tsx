@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { jsPDF } from 'jspdf';
 import { db } from '../services/db';
+import { postJson } from '../services/api';
 import { AccountRecord } from '../types';
 
 // ── Categories ──────────────────────────────────────────────────────────────
@@ -162,7 +163,12 @@ function exportPDF(
   doc.setTextColor(150, 150, 150);
   doc.text(`Total ${filtered.length} record(s)  |  GuardManager Pro — Confidential`, margin, y);
 
-  doc.save(`account-statement-${startDate}-to-${endDate}.pdf`);
+  const filename = `account-statement-${startDate}-to-${endDate}.pdf`;
+  const base64 = doc.output('datauristring');
+
+  postJson('/api/export/pdf', { filename, base64 })
+    .then(() => alert(`Statement saved to configured exports folder as ${filename}`))
+    .catch(err => alert('Failed to save PDF: ' + (err instanceof Error ? err.message : String(err))));
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────

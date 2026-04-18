@@ -35,10 +35,12 @@ export const Settings: React.FC = () => {
     try {
       await putJson('/api/settings/backup', form);
       await postJson('/api/drive/connect');
-      setMessage('Google Drive connected');
+      setMessage('Google Drive connected successfully!');
+      setTimeout(() => setMessage(''), 5000);
       await load();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Failed to connect Google Drive');
+      console.error(error);
+      setMessage(error instanceof Error ? error.message : 'Failed to connect Google Drive. Please check your credentials file.');
     } finally {
       setBusy(false);
     }
@@ -49,20 +51,29 @@ export const Settings: React.FC = () => {
     try {
       await postJson('/api/drive/disconnect');
       setMessage('Google Drive disconnected');
+      setTimeout(() => setMessage(''), 5000);
       await load();
+    } catch (error) {
+      setMessage('Failed to disconnect');
     } finally {
       setBusy(false);
     }
   };
 
   const runBackup = async () => {
+    if (!form) return;
     setBusy(true);
     try {
+      // Save settings first to ensure driveEnabled is updated
+      await putJson('/api/settings/backup', form);
+      
       await postJson('/api/backup/run');
-      setMessage('Backup completed');
+      setMessage('Backup completed successfully!');
+      setTimeout(() => setMessage(''), 5000);
       await load();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Backup failed');
+      console.error(error);
+      setMessage(error instanceof Error ? error.message : 'Backup failed. Check logs in history for details.');
     } finally {
       setBusy(false);
     }
@@ -105,15 +116,6 @@ export const Settings: React.FC = () => {
             <span className={`text-xs font-bold px-2 py-1 rounded-full ${settings.drive.connected ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
               {settings.drive.connected ? 'Connected' : 'Disconnected'}
             </span>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-500 mb-1">OAuth Client Credentials Path</label>
-            <input
-              className="w-full border border-slate-200 rounded-lg p-2.5 bg-slate-50"
-              value={form.googleCredentialsPath}
-              onChange={e => setForm({ ...form, googleCredentialsPath: e.target.value })}
-            />
           </div>
 
           <div>
@@ -160,6 +162,32 @@ export const Settings: React.FC = () => {
             <div>
               <label className="block text-xs font-bold text-slate-500 mb-1">Backup Time</label>
               <input type="time" className="w-full border border-slate-200 rounded-lg p-2.5 bg-slate-50" value={form.backupTime} onChange={e => setForm({ ...form, backupTime: e.target.value })} />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-500 mb-1">PDF Export Path (fixed folder)</label>
+            <div className="flex gap-2">
+              <input
+                className="flex-1 border border-slate-200 rounded-lg p-2.5 bg-slate-50"
+                value={form.pdfExportPath}
+                placeholder="e.g. C:\Users\Name\Documents\Exports"
+                onChange={e => setForm({ ...form, pdfExportPath: e.target.value })}
+              />
+              <button
+                type="button"
+                onClick={async () => {
+                  if ((window as any).pywebview?.api) {
+                    const path = await (window as any).pywebview.api.pick_folder();
+                    if (path) setForm({ ...form, pdfExportPath: path });
+                  } else {
+                    alert('Folder picker is only available in the desktop application.');
+                  }
+                }}
+                className="bg-slate-100 border border-slate-300 px-3 py-2 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-200 transition whitespace-nowrap"
+              >
+                Browse...
+              </button>
             </div>
           </div>
 

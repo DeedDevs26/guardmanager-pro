@@ -39,5 +39,5 @@ async def store_document(guard_id: str, document_type: str, file: UploadFile) ->
         mimeType=file.content_type or "",
         sizeBytes=len(content),
         checksumSha256=_checksum(content),
-        createdAt=datetime.utcnow().isoformat(),
+        createdAt=datetime.now().isoformat(),
     )
