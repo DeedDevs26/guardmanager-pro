@@ -67,6 +67,7 @@ export interface SalarySlip {
   totalShifts: number; // Count of presents
   grossSalary: number;
   totalAdvance: number;
+  totalOthers?: number;
   totalFoodCost: number;
   uniformDeduction: number;
   netSalary: number;
@@ -125,4 +126,72 @@ export type ViewState = 'DASHBOARD' | 'GUARDS' | 'SITES' | 'ATTENDANCE' | 'EXPEN
 
 export interface BankOption extends InvoiceBankDetails {
   id: string;
+}
+
+export interface GuardDocument {
+  id: string;
+  guardId: string;
+  documentType: string;
+  originalName: string;
+  storedName: string;
+  relativePath: string;
+  mimeType: string;
+  sizeBytes: number;
+  checksumSha256: string;
+  createdAt: string;
+  driveFileId?: string | null;
+  lastBackupAt?: string | null;
+}
+
+export interface BackupSettings {
+  driveEnabled: boolean;
+  autoBackupEnabled: boolean;
+  backupTime: string;
+  backupFrequency: string;
+  includeDatabase: boolean;
+  includeDocuments: boolean;
+  googleCredentialsPath: string;
+  googleDriveFolderName: string;
+}
+
+export interface StorageSettings {
+  appDataPath: string;
+  databasePath: string;
+  documentsPath: string;
+  backupsPath: string;
+}
+
+export interface DriveStatus {
+  connected: boolean;
+  credentialsPath: string;
+  folderName: string;
+  lastError?: string | null;
+}
+
+export interface BackupRun {
+  id: string;
+  startedAt: string;
+  finishedAt?: string | null;
+  status: string;
+  errorMessage?: string | null;
+  filesUploaded: number;
+  bytesUploaded: number;
+  destination: string;
+}
+
+export interface BootstrapData {
+  guards: Guard[];
+  sites: Site[];
+  attendance: AttendanceRecord[];
+  expenses: ExpenseRecord[];
+  invoices: Invoice[];
+  accounts: AccountRecord[];
+  banks: BankOption[];
+}
+
+export interface SettingsResponse {
+  storage: StorageSettings;
+  backup: BackupSettings;
+  drive: DriveStatus;
+  history: BackupRun[];
 }

@@ -2,23 +2,40 @@
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
-# Run and deploy your AI Studio app
+# GuardManager Pro
 
-This contains everything you need to run your app locally.
+Desktop guard management application with the existing React frontend migrated to a local Python runtime.
 
-View your app in AI Studio: https://ai.studio/apps/drive/1ry8ifxqYoXxlSJ2EyHUXhlxdCcQ7RIi3
+## Stack
 
-## Run Locally
+- Frontend: React + TypeScript + Vite
+- Desktop host: Python + FastAPI + pywebview
+- Database: SQLite
+- Backup: local snapshots plus Google Drive integration
+- Packaging: PyInstaller
 
-**Prerequisites:**  Node.js
+## Frontend setup
 
-
-1. Install dependencies:
+1. Install Node dependencies:
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
-4. Build the exe:
-   'npm run build'
-5. If above cmd failed:
-6.  'npm run electron:build'
+2. Run the frontend only:
+   `npm run frontend:dev`
+3. Build frontend assets for desktop packaging:
+   `npm run frontend:build`
+
+## Python desktop setup
+
+1. Install Python dependencies:
+   `pip install -r backend/requirements.txt`
+2. Build the frontend:
+   `npm run frontend:build`
+3. Run the desktop app in browser-hosted dev mode:
+   `npm run desktop:dev`
+4. Build the Windows executable:
+   `npm run desktop:build`
+
+## Google Drive backup
+
+1. Create a Google OAuth desktop client in Google Cloud Console.
+2. Place the downloaded credentials JSON at `%APPDATA%/GuardManagerPro/google_credentials.json` or set the path in Settings.
+3. Open `Settings` in the app and connect Google Drive.

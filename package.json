@@ -7,6 +7,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "frontend:dev": "vite",
+    "frontend:build": "vite build",
+    "desktop:dev": "python backend/main.py --open-browser",
+    "desktop:build": "npm run frontend:build && python -m PyInstaller --noconfirm guardmanager.spec",
     "preview": "vite preview",
     "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && cross-env VITE_DEV_URL=http://localhost:3000 electron .\"",
     "electron:build": "npm run build && electron-builder",
