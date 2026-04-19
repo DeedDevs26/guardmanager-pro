@@ -190,6 +190,52 @@ export const Settings: React.FC = () => {
             </div>
           </div>
 
+          <div className="space-y-4">
+            <div className="space-y-1 relative group">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Documents Location</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={settings.storage.documentsPath}
+                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-600 font-medium"
+                />
+                <button
+                  onClick={() => (window as any).pywebview.api.open_folder(settings.storage.documentsPath)}
+                  className="px-3 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-2 font-medium text-sm"
+                  title="Open folder in Explorer"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                  </svg>
+                  <span>Open</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-1 relative group">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Backups Location</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={settings.storage.backupsPath}
+                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-600 font-medium"
+                />
+                <button
+                  onClick={() => (window as any).pywebview.api.open_folder(settings.storage.backupsPath)}
+                  className="px-3 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-2 font-medium text-sm"
+                  title="Open folder in Explorer"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                  </svg>
+                  <span>Open</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div>
             <label className="block text-xs font-bold text-slate-500 mb-1">PDF Export Path</label>
             <div className="flex gap-2">
@@ -230,7 +276,10 @@ export const Settings: React.FC = () => {
                     <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${run.status === 'success' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
                       {run.status}
                     </span>
-                    <span className="text-xs font-bold text-slate-700">{new Date(run.startedAt).toLocaleString()}</span>
+                    <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${run.isAutomatic ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                      {run.isAutomatic ? 'Automatic' : 'Manual'}
+                    </span>
+                    <span className="text-xs font-bold text-slate-700">{new Date(run.startedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</span>
                   </div>
                   {run.status === 'success' && (
                     <button

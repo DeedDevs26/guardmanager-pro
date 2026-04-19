@@ -21,8 +21,10 @@ def _checksum(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def _folder_for(guard_id: str, document_type: str) -> Path:
-    folder = PATHS.documents_dir / "guards" / guard_id / document_type
+def _folder_for(guard_name: str, document_type: str) -> Path:
+    safe_guard = _sanitize_name(guard_name)
+    safe_type = _sanitize_name(document_type)
+    folder = PATHS.documents_dir / "guards" / safe_guard / safe_type
     folder.mkdir(parents=True, exist_ok=True)
     return folder
 
@@ -37,7 +39,7 @@ async def store_document(guard_id: str, guard_name: str, document_type: str, fil
     short_uuid = uuid4().hex[:8] 
     stored_name = f"{safe_name}_{safe_type}_{short_uuid}{suffix}"
     
-    folder = _folder_for(guard_id, document_type)
+    folder = _folder_for(guard_name, document_type)
     target = folder / stored_name
     target.write_bytes(content)
     relative = target.relative_to(PATHS.documents_dir).as_posix()

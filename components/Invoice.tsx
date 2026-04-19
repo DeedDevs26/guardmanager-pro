@@ -85,7 +85,7 @@ const COMPANY_NAME_WITHOUT_GST = 'BCCSF(Security Services)';
 
 const defaultCompany: InvoiceCompany = {
     name: COMPANY_NAME_WITH_GST,
-    address: 'No 5 18/414 PN Road, Puspa Bus Stop, Opp.\nSecond Floor, Tirupur – 641 602',
+    address: 'No 5 18/414 PN Road, Puspa Bus Stop, Opp.\nSecond Floor, Tirupur - 641 602',
     phone: '9500427215',
     email: 'bccsec.force@gmail.com',
     pan: 'ABFFB6765P',

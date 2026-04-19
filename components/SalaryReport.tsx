@@ -9,7 +9,7 @@ const fmt = (n: number) => `Rs.${n.toLocaleString('en-IN')}`;
 const fmtDate = (d: string) =>
   new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 
-const getRangeLabel = (from: string, to: string) => `${fmtDate(from)}  –  ${fmtDate(to)}`;
+const getRangeLabel = (from: string, to: string) => `${fmtDate(from)} to ${fmtDate(to)}`;
 
 // default: first day of current month → today
 const today = new Date().toISOString().split('T')[0];
@@ -401,7 +401,7 @@ export const SalaryReport: React.FC = () => {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
     doc.setTextColor(210, 225, 255);
-    doc.text(`Salary Report  –  ${rangeLabel}`, margin + 5, y + 17);
+    doc.text(`Salary Report - ${rangeLabel}`, margin + 5, y + 17);
     doc.setFontSize(8.5);
     doc.setTextColor(...white);
     doc.text(`Generated: ${new Date().toLocaleDateString('en-IN')}`, pageW - margin - 4, y + 9, { align: 'right' });

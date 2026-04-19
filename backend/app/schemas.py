@@ -166,6 +166,7 @@ class BackupRunSchema(BaseModel):
     filesUploaded: int = 0
     bytesUploaded: int = 0
     destination: str = "local"
+    isAutomatic: bool = False
 
 
 class BootstrapSchema(BaseModel):

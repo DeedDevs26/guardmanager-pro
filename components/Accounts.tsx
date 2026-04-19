@@ -67,7 +67,7 @@ function exportPDF(
   doc.setTextColor(60, 60, 60);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
-  doc.text(`Period: ${fmtDate(startDate)}  →  ${fmtDate(endDate)}`, margin, y);
+  doc.text(`Period: ${fmtDate(startDate)} to ${fmtDate(endDate)}`, margin, y);
   y += 10;
 
   // ── Summary boxes ──
@@ -258,7 +258,7 @@ export const Accounts: React.FC = () => {
 
   const monthLabel = startDate === endDate
     ? fmtDate(startDate)
-    : `${fmtDate(startDate)} – ${fmtDate(endDate)}`;
+    : `${fmtDate(startDate)} - ${fmtDate(endDate)}`;
 
   return (
     <div className="p-6 h-full flex flex-col gap-5 overflow-auto">

@@ -40,6 +40,22 @@ class Bridge:
         result = self._window.create_file_dialog(webview.OPEN_DIALOG, file_types=('Data Base Files (*.db)', 'All files (*.*)'))
         return result[0] if result else None
 
+    def open_folder(self, folder_path: str):
+        if not folder_path:
+            return
+        import platform
+        import subprocess
+        path = os.path.normpath(folder_path)
+        if not os.path.exists(path):
+            return
+            
+        if platform.system() == 'Windows':
+            os.startfile(path)
+        elif platform.system() == 'Darwin':
+            subprocess.Popen(['open', path])
+        else:
+            subprocess.Popen(['xdg-open', path])
+
 
 def run_server(port: int) -> None:
     uvicorn.run(create_app(), host="127.0.0.1", port=port, log_level="info")
@@ -53,7 +69,7 @@ def main() -> None:
 
     if args.run_backup:
         with session_scope() as session:
-            backup_manager.run_backup(session, repository.get_backup_settings(session))
+            backup_manager.run_backup(session, repository.get_backup_settings(session), is_automatic=True)
         return
 
     port = int(os.getenv("GUARDMANAGER_PORT", _free_port()))

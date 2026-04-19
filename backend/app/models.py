@@ -143,6 +143,7 @@ class BackupRunModel(Base):
     files_uploaded: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     bytes_uploaded: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     destination: Mapped[str] = mapped_column(String, default="local", nullable=False)
+    is_automatic: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
 
 class RuntimeStateModel(Base):

@@ -13,33 +13,16 @@ from . import repository
 from .drive_backup import create_database_snapshot, upload_file_to_drive
 
 
-def _backup_documents_copy() -> tuple[int, int]:
-    stamp_dir = PATHS.backups_dir / f"documents-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
-    source = PATHS.documents_dir
-    if not source.exists():
-        return 0, 0
-    shutil.copytree(source, stamp_dir, dirs_exist_ok=True)
-    files = [p for p in stamp_dir.rglob("*") if p.is_file()]
-    return len(files), sum(f.stat().st_size for f in files)
 
 
 def cleanup_old_backups(keep_count: int = 10) -> None:
-    """Keep only the N most recent local backups of DB and documents."""
+    """Keep only the N most recent local backups of DB."""
     # 1. Database snapshots
     db_files = sorted(list(PATHS.backups_dir.glob("guardmanager-*.db")), key=lambda x: x.stat().st_mtime)
     if len(db_files) > keep_count:
         for f in db_files[:-keep_count]:
             try:
                 f.unlink()
-            except Exception:
-                pass
-    
-    # 2. Document copies
-    doc_dirs = sorted([d for d in PATHS.backups_dir.glob("documents-*") if d.is_dir()], key=lambda x: x.stat().st_mtime)
-    if len(doc_dirs) > keep_count:
-        for d in doc_dirs[:-keep_count]:
-            try:
-                shutil.rmtree(d)
             except Exception:
                 pass
 
@@ -92,9 +75,9 @@ def import_database_file(file_path: str) -> None:
     shutil.copy2(source, PATHS.database_file)
 
 
-def run_backup(session: Session, settings: BackupSettingsSchema) -> list[repository.BackupRunSchema]:
+def run_backup(session: Session, settings: BackupSettingsSchema, is_automatic: bool = False) -> list[repository.BackupRunSchema]:
     destination = "google_drive" if settings.driveEnabled else "local"
-    run = repository.create_backup_run(session, destination=destination)
+    run = repository.create_backup_run(session, destination=destination, is_automatic=is_automatic)
     files_uploaded = 0
     bytes_uploaded = 0
 
@@ -109,16 +92,27 @@ def run_backup(session: Session, settings: BackupSettingsSchema) -> list[reposit
             files_uploaded += 1
             bytes_uploaded += snapshot.stat().st_size
             if settings.driveEnabled:
+                from .drive_backup import cleanup_old_drive_backups
                 upload_file_to_drive(snapshot, folder_id=folder_id)
+                cleanup_old_drive_backups(folder_id, keep_count=10)
 
         if settings.includeDocuments:
-            doc_files, doc_bytes = _backup_documents_copy()
-            files_uploaded += doc_files
-            bytes_uploaded += doc_bytes
             if settings.driveEnabled:
-                for file_path in PATHS.documents_dir.rglob("*"):
-                    if file_path.is_file():
-                        upload_file_to_drive(file_path, folder_id=folder_id)
+                from .drive_backup import get_or_create_drive_path
+                # We use the database to find documents and their guard names
+                docs_with_info = repository.list_documents_with_names(session)
+                for doc, guard_name in docs_with_info:
+                    local_path = PATHS.documents_dir / doc.relative_path
+                    if local_path.exists():
+                        # Determine Drive folder: Guards / GuardName / DocType
+                        from .documents import _sanitize_name
+                        parts = ["guards", _sanitize_name(guard_name), _sanitize_name(doc.document_type)]
+                        target_folder_id = get_or_create_drive_path(parts, folder_id)
+                        upload_file_to_drive(local_path, folder_id=target_folder_id)
+                        
+                        # Update stats
+                        files_uploaded += 1
+                        bytes_uploaded += doc.size_bytes
 
         repository.finish_backup_run(session, run.id, status="success", files_uploaded=files_uploaded, bytes_uploaded=bytes_uploaded)
         

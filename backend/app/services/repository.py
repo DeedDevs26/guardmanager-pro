@@ -275,6 +275,15 @@ def list_documents(session: Session, guard_id: str | None = None) -> list[GuardD
     ]
 
 
+def list_documents_with_names(session: Session) -> list[tuple[GuardDocumentModel, str]]:
+    """Returns document models paired with the guard's actual name."""
+    stmt = (
+        select(GuardDocumentModel, GuardModel.name)
+        .join(GuardModel, GuardModel.id == GuardDocumentModel.guard_id)
+    )
+    return session.execute(stmt).all()
+
+
 def save_document(session: Session, payload: GuardDocumentSchema) -> GuardDocumentSchema:
     _upsert(
         session,
@@ -302,12 +311,12 @@ def delete_document(session: Session, document_id: str) -> None:
 
 def list_backup_runs(session: Session) -> list[BackupRunSchema]:
     rows = session.scalars(select(BackupRunModel).order_by(BackupRunModel.started_at.desc())).all()
-    return [BackupRunSchema(id=r.id, startedAt=r.started_at, finishedAt=r.finished_at, status=r.status, errorMessage=r.error_message, filesUploaded=r.files_uploaded, bytesUploaded=r.bytes_uploaded, destination=r.destination) for r in rows]
+    return [BackupRunSchema(id=r.id, startedAt=r.started_at, finishedAt=r.finished_at, status=r.status, errorMessage=r.error_message, filesUploaded=r.files_uploaded, bytesUploaded=r.bytes_uploaded, destination=r.destination, isAutomatic=bool(r.is_automatic)) for r in rows]
 
 
-def create_backup_run(session: Session, destination: str) -> BackupRunSchema:
-    payload = BackupRunSchema(id=uuid4().hex, startedAt=_now_iso(), status="running", destination=destination)
-    _upsert(session, BackupRunModel(id=payload.id, started_at=payload.startedAt, status=payload.status, destination=destination))
+def create_backup_run(session: Session, destination: str, is_automatic: bool = False) -> BackupRunSchema:
+    payload = BackupRunSchema(id=uuid4().hex, startedAt=_now_iso(), status="running", destination=destination, isAutomatic=is_automatic)
+    _upsert(session, BackupRunModel(id=payload.id, started_at=payload.startedAt, status=payload.status, destination=destination, is_automatic=int(is_automatic)))
     session.flush()
     return payload
 
@@ -366,6 +375,15 @@ def update_runtime_state(session: Session, key: str, value: str) -> None:
 
 
 def seed_defaults(session: Session) -> None:
+    # Minimal migration: add is_automatic column if missing
+    from sqlalchemy import text
+    try:
+        session.execute(text("ALTER TABLE backup_runs ADD COLUMN is_automatic INTEGER DEFAULT 0"))
+        session.commit()
+    except Exception:
+        # Column likely already exists
+        session.rollback()
+
     if session.scalar(select(GuardModel.id).limit(1)):
         return
 
