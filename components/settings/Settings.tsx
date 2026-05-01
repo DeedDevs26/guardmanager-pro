@@ -25,6 +25,9 @@ export const Settings: React.FC = () => {
       await putJson('/api/settings/backup', form);
       setMessage('Backup settings saved');
       await load();
+    } catch (error) {
+      // BUG-08 fix: surface save errors instead of silently swallowing them
+      setMessage(error instanceof Error ? error.message : 'Failed to save settings.');
     } finally {
       setBusy(false);
     }
@@ -201,7 +204,7 @@ export const Settings: React.FC = () => {
                   className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-600 font-medium"
                 />
                 <button
-                  onClick={() => (window as any).pywebview.api.open_folder(settings.storage.documentsPath)}
+                  onClick={() => (window as any).pywebview?.api?.open_folder(settings.storage.documentsPath)}
                   className="px-3 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-2 font-medium text-sm"
                   title="Open folder in Explorer"
                 >
@@ -223,7 +226,7 @@ export const Settings: React.FC = () => {
                   className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-600 font-medium"
                 />
                 <button
-                  onClick={() => (window as any).pywebview.api.open_folder(settings.storage.backupsPath)}
+                  onClick={() => (window as any).pywebview?.api?.open_folder(settings.storage.backupsPath)}
                   className="px-3 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-2 font-medium text-sm"
                   title="Open folder in Explorer"
                 >

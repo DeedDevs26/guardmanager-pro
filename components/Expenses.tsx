@@ -24,7 +24,7 @@ export const Expenses: React.FC = () => {
     if (!newExpense.guardId || !newExpense.amount) return;
 
     db.expenses.add({
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       guardId: newExpense.guardId,
       date: newExpense.date!,
       amount: Number(newExpense.amount),

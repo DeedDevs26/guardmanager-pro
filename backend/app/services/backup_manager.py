@@ -47,6 +47,11 @@ def restore_backup_bundle(backup_id: str) -> None:
             extra.unlink()
 
     shutil.copy2(db_file, PATHS.database_file)
+
+    # BUG-03 fix: dispose engine again after the file swap so the connection
+    # pool discards any stale state and reconnects to the restored DB file.
+    from ..database import engine
+    engine.dispose()
     
     # 2. Restore Documents if present
     if doc_dir.exists():

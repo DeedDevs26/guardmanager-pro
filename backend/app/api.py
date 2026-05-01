@@ -130,6 +130,13 @@ def create_app() -> FastAPI:
 
     @app.delete("/api/guards/{guard_id}", response_model=StatusMessageSchema)
     def remove_guard(guard_id: str, db: Session = Depends(get_db)):
+        # BUG-01 fix: delete all associated documents from disk and DB first
+        docs = repository.list_documents(db, guard_id)
+        for doc in docs:
+            file_path = PATHS.documents_dir / doc.relativePath
+            if file_path.exists():
+                file_path.unlink()
+            repository.delete_document(db, doc.id)
         repository.delete_guard(db, guard_id)
         return StatusMessageSchema(message="Guard deleted")
 
@@ -145,6 +152,8 @@ def create_app() -> FastAPI:
 
     @app.delete("/api/sites/{site_id}", response_model=StatusMessageSchema)
     def remove_site(site_id: str, db: Session = Depends(get_db)):
+        # BUG-02 fix: clear siteId on all guards assigned to this site
+        repository.clear_site_from_guards(db, site_id)
         repository.delete_site(db, site_id)
         return StatusMessageSchema(message="Site deleted")
 

@@ -117,6 +117,13 @@ def delete_guard(session: Session, guard_id: str) -> None:
     session.execute(delete(GuardModel).where(GuardModel.id == guard_id))
 
 
+def clear_site_from_guards(session: Session, site_id: str) -> None:
+    """BUG-02 fix: Reset siteId to empty for all guards assigned to a deleted site."""
+    rows = session.scalars(select(GuardModel).where(GuardModel.site_id == site_id)).all()
+    for guard in rows:
+        guard.site_id = ""
+
+
 def list_attendance(session: Session) -> list[AttendanceRecordSchema]:
     rows = session.scalars(select(AttendanceRecordModel).order_by(AttendanceRecordModel.date)).all()
     return [
@@ -375,14 +382,14 @@ def update_runtime_state(session: Session, key: str, value: str) -> None:
 
 
 def seed_defaults(session: Session) -> None:
-    # Minimal migration: add is_automatic column if missing
+    # BUG-11 fix: check column existence before attempting migration instead of
+    # relying on a try/except rollback on every single startup.
     from sqlalchemy import text
-    try:
+    result = session.execute(text("PRAGMA table_info(backup_runs)"))
+    existing_columns = {row[1] for row in result.fetchall()}
+    if "is_automatic" not in existing_columns:
         session.execute(text("ALTER TABLE backup_runs ADD COLUMN is_automatic INTEGER DEFAULT 0"))
         session.commit()
-    except Exception:
-        # Column likely already exists
-        session.rollback()
 
     if session.scalar(select(GuardModel.id).limit(1)):
         return
