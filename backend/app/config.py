@@ -23,6 +23,7 @@ class AppPaths:
     frontend_dist: Path
     google_credentials_default: Path
     exports_dir: Path
+    log_file: Path
 
 
 def get_paths() -> AppPaths:
@@ -48,6 +49,7 @@ def get_paths() -> AppPaths:
         frontend_dist=frontend_dist,
         google_credentials_default=app_data / "google_credentials.json",
         exports_dir=app_data / "exports",
+        log_file=app_data / "app.log",
     )
 
 

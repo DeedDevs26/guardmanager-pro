@@ -115,6 +115,10 @@ def save_guard(session: Session, payload: GuardSchema) -> GuardSchema:
 
 def delete_guard(session: Session, guard_id: str) -> None:
     session.execute(delete(GuardModel).where(GuardModel.id == guard_id))
+    # Cascade delete associated records
+    session.execute(delete(AttendanceRecordModel).where(AttendanceRecordModel.guard_id == guard_id))
+    session.execute(delete(ExpenseRecordModel).where(ExpenseRecordModel.guard_id == guard_id))
+    session.execute(delete(GuardDocumentModel).where(GuardDocumentModel.guard_id == guard_id))
 
 
 def clear_site_from_guards(session: Session, site_id: str) -> None:
@@ -122,6 +126,12 @@ def clear_site_from_guards(session: Session, site_id: str) -> None:
     rows = session.scalars(select(GuardModel).where(GuardModel.site_id == site_id)).all()
     for guard in rows:
         guard.site_id = ""
+    
+    # Also clear site from attendance records
+    att_rows = session.scalars(select(AttendanceRecordModel).where(AttendanceRecordModel.site_id.contains(site_id))).all()
+    for row in att_rows:
+        ids = [i for i in row.site_id.split(",") if i != site_id]
+        row.site_id = ",".join(ids)
 
 
 def list_attendance(session: Session) -> list[AttendanceRecordSchema]:

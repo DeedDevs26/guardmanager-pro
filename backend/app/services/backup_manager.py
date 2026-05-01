@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import shutil
+import time
 from datetime import datetime
 
 from sqlalchemy.orm import Session
@@ -13,6 +14,16 @@ from . import repository
 from .drive_backup import create_database_snapshot, upload_file_to_drive
 
 
+def log_message(msg: str) -> None:
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    formatted = f"[{timestamp}] {msg}\n"
+    print(formatted.strip())
+    try:
+        PATHS.log_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(PATHS.log_file, "a", encoding="utf-8") as f:
+            f.write(formatted)
+    except Exception as e:
+        print(f"FAILED TO WRITE LOG: {e}")
 
 
 def cleanup_old_backups(keep_count: int = 10) -> None:
@@ -62,26 +73,86 @@ def restore_backup_bundle(backup_id: str) -> None:
 
 
 def import_database_file(file_path: str) -> None:
-    """Safely replaces the current database with an external .db file."""
+    """Safely replaces the current database with an external .db file.
+    Uses retries and temporary files to handle Windows file locking issues.
+    """
     source = Path(file_path)
     if not source.exists():
+        log_message(f"ERROR: Import source not found: {file_path}")
         raise FileNotFoundError(f"File not found: {file_path}")
     
-    # Close active engine to release file locks on Windows
-    close_engine()
-
-    # Remove WAL files if present to ensure clean swap
+    log_message(f"START: Importing {file_path}...")
+    
+    # Close active engine to release file locks
+    try:
+        close_engine()
+        log_message("Engine closed.")
+    except Exception as e:
+        log_message(f"WARN: Failed to close engine cleanly: {e}")
+    
+    # 1. Clean up WAL/SHM files
     for suffix in ["-wal", "-shm"]:
         extra = Path(str(PATHS.database_file) + suffix)
         if extra.exists():
-            extra.unlink()
+            for i in range(5):
+                try:
+                    extra.unlink()
+                    log_message(f"Deleted {extra.name}")
+                    break
+                except PermissionError:
+                    log_message(f"LOCKED: {extra.name} locked, retry {i+1}/5...")
+                    time.sleep(0.5)
+                except Exception as e:
+                    log_message(f"ERROR: Failed to delete {extra.name}: {e}")
+                    break
 
-    # Simple copy over active DB
-    shutil.copy2(source, PATHS.database_file)
+    # 2. Swap database file
+    temp_db = PATHS.database_file.with_suffix(".tmp")
+    try:
+        shutil.copy2(source, temp_db)
+        log_message(f"Copied source to temp: {temp_db.name}")
+        
+        success = False
+        last_error = None
+        for i in range(10):
+            try:
+                if PATHS.database_file.exists():
+                    PATHS.database_file.unlink()
+                    log_message("Active DB file unlinked.")
+                
+                temp_db.rename(PATHS.database_file)
+                success = True
+                log_message("SUCCESS: Database file swapped.")
+                break
+            except PermissionError as e:
+                last_error = e
+                log_message(f"LOCKED: Active DB locked, retry {i+1}/10... ({e})")
+                time.sleep(0.5)
+            except Exception as e:
+                last_error = e
+                log_message(f"ERROR: Swap failed: {e}")
+                break
+        
+        if not success:
+            log_message(f"CRITICAL: All swap retries failed. Last error: {last_error}")
+            raise last_error or Exception("Failed to swap database file after multiple retries.")
 
-    # Re-initialize engine after swap
-    from ..database import engine
-    engine.dispose()
+    finally:
+        if temp_db.exists():
+            try:
+                temp_db.unlink()
+            except:
+                pass
+
+    # 3. Re-initialize engine
+    try:
+        from ..database import engine
+        engine.dispose()
+        log_message("Engine re-disposed (cleaned up).")
+    except Exception as e:
+        log_message(f"WARN: Final engine disposal failed: {e}")
+        
+    log_message("FINISH: Import complete.")
 
 
 def run_backup(session: Session, settings: BackupSettingsSchema, is_automatic: bool = False) -> list[repository.BackupRunSchema]:
@@ -114,8 +185,8 @@ def run_backup(session: Session, settings: BackupSettingsSchema, is_automatic: b
                     local_path = PATHS.documents_dir / doc.relative_path
                     if local_path.exists():
                         # Determine Drive folder: Guards / GuardName / DocType
-                        from .documents import _sanitize_name
-                        parts = ["guards", _sanitize_name(guard_name), _sanitize_name(doc.document_type)]
+                        from ..utils.files import sanitize_filename
+                        parts = ["guards", sanitize_filename(guard_name), sanitize_filename(doc.document_type)]
                         target_folder_id = get_or_create_drive_path(parts, folder_id)
                         upload_file_to_drive(local_path, folder_id=target_folder_id)
                         

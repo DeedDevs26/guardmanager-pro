@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import mimetypes
 import shutil
+import sqlite3
 import subprocess
 import sys
 from datetime import datetime
@@ -19,16 +20,36 @@ SCOPES = ["https://www.googleapis.com/auth/drive.file"]
 
 
 def create_database_snapshot() -> Path:
+    """Creates a clean snapshot of the database, ensuring WAL is checkpointed."""
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     target = PATHS.backups_dir / f"guardmanager-{stamp}.db"
     target.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Force SQLite to merge WAL into the main DB file before copying
+    try:
+        conn = sqlite3.connect(str(PATHS.database_file))
+        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        conn.close()
+    except Exception as e:
+        print(f"Warning: WAL checkpoint failed: {e}")
+
     shutil.copy2(PATHS.database_file, target)
     return target
 
 
 def ensure_task_scheduler(schedule_time: str) -> None:
     """Creates or updates a Windows Scheduled Task for daily backups."""
-    hour, minute = schedule_time.split(":")
+    if not schedule_time or ":" not in schedule_time:
+        print(f"Invalid schedule time: {schedule_time}")
+        return
+    try:
+        hour, minute = schedule_time.split(":")
+        # Basic range check
+        if not (0 <= int(hour) <= 23 and 0 <= int(minute) <= 59):
+             raise ValueError("Time out of range")
+    except Exception as e:
+        print(f"Error parsing schedule time: {e}")
+        return
     
     # Identify the correct entry point
     is_frozen = getattr(sys, "frozen", False)

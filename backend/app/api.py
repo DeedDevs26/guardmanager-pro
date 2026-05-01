@@ -15,6 +15,7 @@ from .schemas import (
     BackupSettingsSchema,
     BankOptionSchema,
     BootstrapSchema,
+    DatabaseImportSchema,
     DriveStatusSchema,
     ExpenseRecordSchema,
     GuardSchema,
@@ -25,17 +26,32 @@ from .schemas import (
     StatusMessageSchema,
 )
 from .services import backup_manager, repository
+from .services.backup_manager import log_message
 from .services.documents import store_document
 from .services.drive_backup import connect_google_drive, disconnect_google_drive, ensure_task_scheduler, remove_task_scheduler
+from .utils.files import sanitize_filename
 
 
 def create_app() -> FastAPI:
     ensure_directories()
-    Base.metadata.create_all(bind=engine)
-    with session_scope() as session:
-        repository.seed_defaults(session)
-
+    
     app = FastAPI(title="GuardManager Pro Desktop API")
+    
+    # Global error logging
+    @app.exception_handler(Exception)
+    async def global_exception_handler(request, exc):
+        log_message(f"GLOBAL EXCEPTION: {exc}")
+        return HTTPException(status_code=500, detail=str(exc))
+
+    try:
+        log_message("Starting app initialization...")
+        Base.metadata.create_all(bind=engine)
+        with session_scope() as session:
+            repository.seed_defaults(session)
+        log_message("Database ready.")
+    except Exception as e:
+        log_message(f"CRITICAL ERROR during startup: {e}")
+
     app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
     @app.get("/api/bootstrap", response_model=BootstrapSchema)
@@ -108,14 +124,12 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=500, detail=f"Restore failed: {str(e)}")
 
     @app.post("/api/backup/import", response_model=StatusMessageSchema)
-    def import_backup_file(payload: dict):
+    def import_backup_file(payload: DatabaseImportSchema):
         try:
-            path = payload.get("path")
-            if not path:
-                raise ValueError("No path provided")
-            backup_manager.import_database_file(path)
+            backup_manager.import_database_file(payload.path)
             return StatusMessageSchema(message="Database imported successfully. Please restart the application.")
         except Exception as e:
+            backup_manager.log_message(f"CRITICAL: Import endpoint failed: {e}")
             raise HTTPException(status_code=500, detail=f"Import failed: {str(e)}")
 
     @app.get("/api/guards", response_model=list[GuardSchema])
@@ -130,13 +144,17 @@ def create_app() -> FastAPI:
 
     @app.delete("/api/guards/{guard_id}", response_model=StatusMessageSchema)
     def remove_guard(guard_id: str, db: Session = Depends(get_db)):
-        # BUG-01 fix: delete all associated documents from disk and DB first
+        # Delete associated document files from disk
         docs = repository.list_documents(db, guard_id)
         for doc in docs:
             file_path = PATHS.documents_dir / doc.relativePath
             if file_path.exists():
-                file_path.unlink()
-            repository.delete_document(db, doc.id)
+                try:
+                    file_path.unlink()
+                except Exception as e:
+                    log_message(f"WARN: Failed to delete document file {file_path}: {e}")
+        
+        # Repository handles database cascade (docs, attendance, expenses)
         repository.delete_guard(db, guard_id)
         return StatusMessageSchema(message="Guard deleted")
 
@@ -270,7 +288,12 @@ def create_app() -> FastAPI:
             export_path = Path(settings.pdfExportPath or PATHS.exports_dir)
             export_path.mkdir(parents=True, exist_ok=True)
             
-            file_path = export_path / payload.filename
+            # Sanitize filename to prevent path traversal
+            safe_filename = sanitize_filename(payload.filename)
+            if not safe_filename.endswith(".pdf"):
+                safe_filename += ".pdf"
+            
+            file_path = export_path / safe_filename
             
             # Remove header if present (data:application/pdf;base64,...)
             b64_data = payload.base64
@@ -282,6 +305,7 @@ def create_app() -> FastAPI:
                 
             return StatusMessageSchema(message=f"PDF saved to {file_path}", data={"path": str(file_path)})
         except Exception as e:
+            log_message(f"ERROR: PDF export failed: {e}")
             raise HTTPException(status_code=500, detail=f"Failed to save PDF: {str(e)}")
 
     if PATHS.frontend_dist.exists():

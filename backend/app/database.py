@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gc
 from contextlib import contextmanager
 from typing import Iterator
 
@@ -48,7 +49,10 @@ def get_db() -> Iterator[Session]:
 
 
 def close_engine() -> None:
-    """Disposes the engine to release all connection pools.
+    """Disposes the engine and its pool to release all connection handles.
     Essential on Windows before performing file-level operations on the DB.
     """
     engine.dispose()
+    if hasattr(engine, "pool"):
+        engine.pool.dispose()
+    gc.collect()  # Force cleanup of any unclosed connection objects

@@ -191,6 +191,10 @@ class PDFExportSchema(BaseModel):
     base64: str
 
 
+class DatabaseImportSchema(BaseModel):
+    path: str
+
+
 class StatusMessageSchema(BaseModel):
     ok: bool = True
     message: str
