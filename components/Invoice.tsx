@@ -202,34 +202,33 @@ const InvoicePreview: React.FC<PreviewProps> = ({
                 <tr style={{ background: '#1f4e78', color: '#fff', fontSize: '12px' }}>
                     <th style={{ padding: '6px 8px', textAlign: 'center', width: '40px', border: '1px solid #1f4e78' }}>S.No</th>
                     <th style={{ padding: '6px 8px', textAlign: 'left', border: '1px solid #1f4e78' }}>Description</th>
-                    <th style={{ padding: '6px 8px', textAlign: 'center', border: '1px solid #1f4e78' }}>No. of Guards</th>
-                    <th style={{ padding: '6px 8px', textAlign: 'center', border: '1px solid #1f4e78' }}>No. of Days</th>
-                    <th style={{ padding: '6px 8px', textAlign: 'center', border: '1px solid #1f4e78' }}>Rate (₹)</th>
-                    <th style={{ padding: '6px 8px', textAlign: 'center', border: '1px solid #1f4e78' }}>Value (₹)</th>
+                    <th style={{ padding: '6px 8px', textAlign: 'center', width: '80px', border: '1px solid #1f4e78' }}>No. of Guards</th>
+                    <th style={{ padding: '6px 8px', textAlign: 'center', width: '80px', border: '1px solid #1f4e78' }}>No. of Days</th>
+                    <th style={{ padding: '6px 8px', textAlign: 'center', width: '80px', border: '1px solid #1f4e78' }}>Rate (₹)</th>
+                    <th style={{ padding: '6px 8px', textAlign: 'center', width: '80px', border: '1px solid #1f4e78' }}>Value (₹)</th>
                 </tr>
             </thead>
             <tbody>
                 {lineItems.map((item, idx) => (
                     <tr key={item.id} style={{ background: '#fff', color: '#000' }}>
-                        <td style={{ padding: '6px 8px', textAlign: 'center', borderLeft: '1px solid #1f4e78', borderRight: '1px solid #1f4e78' }}>{idx + 1}</td>
-                        <td style={{ padding: '6px 8px', borderRight: '1px solid #1f4e78' }}>{item.description}</td>
-                        <td style={{ padding: '6px 8px', textAlign: 'center', borderRight: '1px solid #1f4e78' }}>{item.guards}</td>
-                        <td style={{ padding: '6px 8px', textAlign: 'center', borderRight: '1px solid #1f4e78' }}>{item.days}</td>
-                        <td style={{ padding: '6px 8px', textAlign: 'center', borderRight: '1px solid #1f4e78' }}>{item.rate}</td>
-                        <td style={{ padding: '6px 8px', textAlign: 'center', borderRight: '1px solid #1f4e78' }}>{item.value}</td>
+                        <td style={{ padding: '6px 8px', textAlign: 'center', borderLeft: '1px solid #1f4e78', borderRight: '1px solid #1f4e78', borderBottom: '1px solid #eee' }}>{idx + 1}</td>
+                        <td style={{ padding: '6px 8px', borderRight: '1px solid #1f4e78', borderBottom: '1px solid #eee' }}>{item.description}</td>
+                        <td style={{ padding: '6px 8px', textAlign: 'center', borderRight: '1px solid #1f4e78', borderBottom: '1px solid #eee' }}>{item.guards}</td>
+                        <td style={{ padding: '6px 8px', textAlign: 'center', borderRight: '1px solid #1f4e78', borderBottom: '1px solid #eee' }}>{item.days}</td>
+                        <td style={{ padding: '6px 8px', textAlign: 'center', borderRight: '1px solid #1f4e78', borderBottom: '1px solid #eee' }}>{item.rate}</td>
+                        <td style={{ padding: '6px 8px', textAlign: 'center', borderRight: '1px solid #1f4e78', borderBottom: '1px solid #eee' }}>{item.value}</td>
                     </tr>
                 ))}
+                {/* Total Row */}
+                <tr style={{ background: '#1f4e78', color: '#fff', fontWeight: 'bold', fontSize: '12px' }}>
+                    <td colSpan={2} style={{ padding: '6px 8px', textAlign: 'right', paddingRight: '20px' }}>Total</td>
+                    <td style={{ padding: '6px 8px', textAlign: 'center' }}>{lineItems.reduce((s, i) => s + i.guards, 0)}</td>
+                    <td style={{ padding: '6px 8px', textAlign: 'center' }}>{lineItems.reduce((s, i) => s + i.days, 0)}</td>
+                    <td style={{ padding: '6px 8px', textAlign: 'center' }}></td>
+                    <td style={{ padding: '6px 8px', textAlign: 'center' }}>{subTotal}</td>
+                </tr>
             </tbody>
         </table>
-
-        {/* Table Totals Header */}
-        <div style={{ display: 'flex', background: '#1f4e78', color: '#fff', fontWeight: 'bold', padding: '6px 8px', fontSize: '12px' }}>
-            <div style={{ flex: '1', textAlign: 'right', paddingRight: '20px' }}>Total</div>
-            <div style={{ width: '80px', textAlign: 'center' }}>{lineItems.reduce((s, i) => s + i.guards, 0)}</div>
-            <div style={{ width: '80px', textAlign: 'center' }}>{lineItems.reduce((s, i) => s + i.days, 0)}</div>
-            <div style={{ width: '80px', textAlign: 'center' }}></div>
-            <div style={{ width: '80px', textAlign: 'center' }}>{subTotal}</div>
-        </div>
 
         {/* GST block aligned to right exactly under value */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px', marginBottom: '16px', fontSize: '12px', fontWeight: 'bold' }}>
@@ -479,6 +478,22 @@ export const Invoice: React.FC = () => {
         if (confirm('Delete this invoice?')) {
             db.invoices.delete(id);
             setSavedInvoices(db.invoices.getAll());
+        }
+    };
+
+    const handleDeleteBank = () => {
+        if (selectedBankId === 'custom') return;
+        if (confirm('Are you sure you want to delete this bank option?')) {
+            db.banks.delete(selectedBankId);
+            const updatedBanks = db.banks.getAll();
+            setSavedBanks(updatedBanks);
+            if (updatedBanks.length > 0) {
+                setSelectedBankId(updatedBanks[0].id);
+                setBankDetails(updatedBanks[0]);
+            } else {
+                setSelectedBankId('custom');
+                setBankDetails(defaultBank);
+            }
         }
     };
 
@@ -971,18 +986,11 @@ export const Invoice: React.FC = () => {
                         Save Invoice
                     </button>
                     <button
-                        onClick={handlePrint}
-                        className="flex items-center gap-2 px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition text-sm font-medium"
-                    >
-                        <span className="material-icons text-sm">print</span>
-                        Print
-                    </button>
-                    <button
                         onClick={handleDownloadPDF}
                         className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium"
                     >
                         <span className="material-icons text-sm">picture_as_pdf</span>
-                        Download PDF
+                        Save PDF
                     </button>
                 </div>
             </div>
@@ -1348,25 +1356,36 @@ export const Invoice: React.FC = () => {
                         <div>
                             <div className="flex justify-between items-center mb-3">
                                 <h3 className="font-bold text-slate-700 text-sm uppercase tracking-wide">Bank Details</h3>
-                                <select
-                                    className="border border-slate-300 rounded text-xs px-2 py-1 bg-white text-slate-700 font-medium cursor-pointer"
-                                    value={selectedBankId}
-                                    onChange={(e) => {
-                                        const val = e.target.value;
-                                        setSelectedBankId(val);
-                                        if (val === 'custom') {
-                                            setBankDetails({ bankName: '', accountName: '', accountNumber: '', ifsc: '', upiId: '' } as any);
-                                        } else {
-                                            const bank = savedBanks.find(b => b.id === val);
-                                            if (bank) setBankDetails(bank);
-                                        }
-                                    }}
-                                >
-                                    {savedBanks.map(b => (
-                                        <option key={b.id} value={b.id}>{b.bankName} - {b.accountName}</option>
-                                    ))}
-                                    <option value="custom" className="font-bold text-primary">+ Custom / New Bank</option>
-                                </select>
+                                <div className="flex items-center gap-2">
+                                    <select
+                                        className="border border-slate-300 rounded text-xs px-2 py-1 bg-white text-slate-700 font-medium cursor-pointer"
+                                        value={selectedBankId}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            setSelectedBankId(val);
+                                            if (val === 'custom') {
+                                                setBankDetails({ bankName: '', accountName: '', accountNumber: '', ifsc: '', upiId: '' } as any);
+                                            } else {
+                                                const bank = savedBanks.find(b => b.id === val);
+                                                if (bank) setBankDetails(bank);
+                                            }
+                                        }}
+                                    >
+                                        {savedBanks.map(b => (
+                                            <option key={b.id} value={b.id}>{b.bankName} - {b.accountName}</option>
+                                        ))}
+                                        <option value="custom" className="font-bold text-primary">+ Custom / New Bank</option>
+                                    </select>
+                                    {selectedBankId !== 'custom' && (
+                                        <button 
+                                            onClick={handleDeleteBank}
+                                            className="text-slate-300 hover:text-red-500 transition-colors"
+                                            title="Delete this bank option"
+                                        >
+                                            <span className="material-icons text-base">delete</span>
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                             <div className="grid grid-cols-2 gap-2">
                                 {([

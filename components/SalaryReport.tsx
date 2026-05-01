@@ -312,6 +312,7 @@ export const SalaryReport: React.FC = () => {
     const rows: { label: string; value: string; color: [number, number, number] }[] = [
       { label: 'Shifts Present', value: String(slip.totalShifts), color: dark },
       { label: 'Gross Salary  (shifts × rate)', value: `Rs.${slip.grossSalary.toLocaleString('en-IN')}`, color: dark },
+      { label: '(-) Advance', value: `- Rs.${slip.totalAdvance.toLocaleString('en-IN')}`, color: red },
       { label: '(-) Food Deduction', value: `- Rs.${slip.totalFoodCost.toLocaleString('en-IN')}`, color: red },
       { label: '(-) Uniform Deduction', value: `- Rs.${slip.uniformDeduction.toLocaleString('en-IN')}`, color: red },
       { label: '(-) Others', value: `- Rs.${slip.totalOthers.toLocaleString('en-IN')}`, color: red },
@@ -575,18 +576,11 @@ export const SalaryReport: React.FC = () => {
             Calculate Report
           </button>
           <button
-            onClick={handlePrint}
-            disabled={slips.length === 0}
-            className="bg-slate-700 text-white px-4 py-2 rounded-lg hover:bg-slate-800 flex items-center gap-2 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <span className="material-icons text-sm">print</span> Print
-          </button>
-          <button
             onClick={handleDownloadPDF}
             disabled={slips.length === 0}
             className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 flex items-center gap-2 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            <span className="material-icons text-sm">picture_as_pdf</span> Download PDF
+            <span className="material-icons text-sm">picture_as_pdf</span> Save PDF
           </button>
         </div>
       </div>

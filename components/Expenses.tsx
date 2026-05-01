@@ -36,8 +36,7 @@ export const Expenses: React.FC = () => {
       date: new Date().toISOString().split('T')[0],
       type: 'Advance',
       guardId: '',
-      amount: 0,
-      reason: ''
+      amount: 0
     });
     refresh();
   };
@@ -107,15 +106,6 @@ export const Expenses: React.FC = () => {
                 value={newExpense.amount || ''}
                 onChange={e => setNewExpense({ ...newExpense, amount: Number(e.target.value) })}
               />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-500 mb-1">Reason/Notes</label>
-              <textarea
-                className="w-full border rounded p-2 bg-slate-50 h-20"
-                value={newExpense.reason || ''}
-                onChange={e => setNewExpense({ ...newExpense, reason: e.target.value })}
-              ></textarea>
             </div>
 
             <button className="w-full bg-primary text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition">
