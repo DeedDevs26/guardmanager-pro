@@ -89,12 +89,14 @@ def main() -> None:
             backup_manager.run_backup(session, repository.get_backup_settings(session), is_automatic=True)
         return
 
-    # Ensure the scheduled task is correctly registered on this machine
-    _sync_scheduler_on_startup()
-
     port = int(os.getenv("GUARDMANAGER_PORT", _free_port()))
     server_thread = threading.Thread(target=run_server, args=(port,), daemon=True)
     server_thread.start()
+
+    # Ensure the scheduled task is correctly registered on this machine.
+    # We do this AFTER starting the server thread so that create_app() has 
+    # a chance to run database migrations/setup first.
+    _sync_scheduler_on_startup()
     base_url = f"http://127.0.0.1:{port}"
 
     for _ in range(60):

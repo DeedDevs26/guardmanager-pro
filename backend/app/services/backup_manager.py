@@ -79,6 +79,10 @@ def import_database_file(file_path: str) -> None:
     # Simple copy over active DB
     shutil.copy2(source, PATHS.database_file)
 
+    # Re-initialize engine after swap
+    from ..database import engine
+    engine.dispose()
+
 
 def run_backup(session: Session, settings: BackupSettingsSchema, is_automatic: bool = False) -> list[repository.BackupRunSchema]:
     destination = "google_drive" if settings.driveEnabled else "local"

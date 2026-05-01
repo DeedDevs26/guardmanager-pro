@@ -167,10 +167,6 @@ export const Settings: React.FC = () => {
               <span className="text-sm text-slate-700">Back up to Google Drive</span>
             </label>
             <label className="flex items-center gap-3">
-              <input type="checkbox" checked={form.autoBackupEnabled} onChange={e => setForm({ ...form, autoBackupEnabled: e.target.checked })} />
-              <span className="text-sm text-slate-700">Enable automatic backup</span>
-            </label>
-            <label className="flex items-center gap-3">
               <input type="checkbox" checked={form.includeDatabase} onChange={e => setForm({ ...form, includeDatabase: e.target.checked })} />
               <span className="text-sm text-slate-700">Include database snapshot</span>
             </label>
@@ -178,19 +174,6 @@ export const Settings: React.FC = () => {
               <input type="checkbox" checked={form.includeDocuments} onChange={e => setForm({ ...form, includeDocuments: e.target.checked })} />
               <span className="text-sm text-slate-700">Include documents</span>
             </label>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-500 mb-1">Frequency</label>
-              <select className="w-full border border-slate-200 rounded-lg p-2.5 bg-slate-50 text-sm" value={form.backupFrequency} onChange={e => setForm({ ...form, backupFrequency: e.target.value })}>
-                <option value="daily">Daily</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-500 mb-1">Backup Time</label>
-              <input type="time" className="w-full border border-slate-200 rounded-lg p-2.5 bg-slate-50 text-sm" value={form.backupTime} onChange={e => setForm({ ...form, backupTime: e.target.value })} />
-            </div>
           </div>
 
           <div className="space-y-4">

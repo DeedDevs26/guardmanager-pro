@@ -33,47 +33,70 @@ def ensure_task_scheduler(schedule_time: str) -> None:
     # Identify the correct entry point
     is_frozen = getattr(sys, "frozen", False)
     if is_frozen:
-        # In production, we run the bundled executable
+        # In production, run the bundled executable
         exe_path = PATHS.runtime_root / "GuardManagerPro.exe"
         if not exe_path.exists():
-            # Fallback if renamed
             exe_path = Path(sys.executable)
-        task_cmd = f'"{exe_path.resolve()}" --run-backup'
+        task_command = str(exe_path.resolve()).replace("/", "\\")
+        task_args = "--run-backup"
     else:
-        # In development, we run main.py via the current python interpreter
+        # In development, run main.py via the current python interpreter
         python_exe = Path(sys.executable)
         main_py = (PATHS.runtime_root / "backend" / "main.py").resolve()
-        task_cmd = f'"{python_exe}" "{main_py}" --run-backup'
+        task_command = str(python_exe).replace("/", "\\")
+        task_args = f'"{str(main_py).replace("/", chr(92))}" --run-backup'
 
-    # schtasks expects backslashes for TR command
-    task_cmd = task_cmd.replace("/", "\\")
-    
-    # Construct the schtasks command. 
-    # Use nested quotes correctly for the /TR argument if it contains spaces.
-    # schtasks /TR requires the string to be enclosed in quotes if it has spaces,
-    # and internal quotes must be escaped as \" or handled by the shell.
-    # Using a list with subprocess.run(shell=False) is safer as it handles shell escaping.
-    command = [
-        "schtasks",
-        "/Create",
-        "/F",
-        "/SC",
-        "DAILY",
-        "/TN",
-        "GuardManagerProAutoBackup",
-        "/TR",
-        task_cmd,
-        "/ST",
-        f"{hour}:{minute}",
-    ]
-    
+
+    # XML task definition — StartBoundary uses ISO 8601 which is always
+    # locale-independent regardless of Windows regional settings.
+    xml_content = f"""<?xml version="1.0" encoding="UTF-16"?>
+<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <RegistrationInfo>
+    <Description>GuardManager Pro automatic daily backup</Description>
+  </RegistrationInfo>
+  <Triggers>
+    <CalendarTrigger>
+      <StartBoundary>2024-01-01T{hour}:{minute}:00</StartBoundary>
+      <Enabled>true</Enabled>
+      <ScheduleByDay>
+        <DaysInterval>1</DaysInterval>
+      </ScheduleByDay>
+    </CalendarTrigger>
+  </Triggers>
+  <Settings>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <ExecutionTimeLimit>PT1H</ExecutionTimeLimit>
+    <Enabled>true</Enabled>
+    <RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>
+  </Settings>
+  <Actions Context="Author">
+    <Exec>
+      <Command>{task_command}</Command>
+      <Arguments>{task_args}</Arguments>
+    </Exec>
+  </Actions>
+</Task>"""
+
+    xml_path = PATHS.app_data / "backup_task.xml"
     try:
-        # Run without shell=True to avoid double-escaping issues
-        result = subprocess.run(command, capture_output=True, text=True, check=False)
+        PATHS.app_data.mkdir(parents=True, exist_ok=True)
+        xml_path.write_text(xml_content, encoding="utf-16")
+        result = subprocess.run(
+            ["schtasks", "/Create", "/F", "/TN", "GuardManagerProAutoBackup", "/XML", str(xml_path)],
+            capture_output=True, text=True, check=False,
+        )
         if result.returncode != 0:
-             print(f"Task Scheduler Error: {result.stderr}")
+            print(f"Task Scheduler Error: {result.stderr}")
     except Exception as e:
-        print(f"Failed to run schtasks: {e}")
+        print(f"Failed to register scheduled task: {e}")
+    finally:
+        try:
+            if xml_path.exists():
+                xml_path.unlink()
+        except Exception:
+            pass
 
 
 def remove_task_scheduler() -> None:

@@ -27,7 +27,9 @@ class AppPaths:
 
 def get_paths() -> AppPaths:
     runtime_root = _runtime_root()
-    app_data = Path(os.getenv("GUARDMANAGER_DATA_DIR", Path.home() / "AppData" / "Roaming" / "GuardManagerPro"))
+    # BUG FIX: Store data in a '.data' folder next to the .exe for portability.
+    # This ensures data persists in the same place even if the user moves the app.
+    app_data = Path(os.getenv("GUARDMANAGER_DATA_DIR", runtime_root / ".data"))
 
     # When bundled with PyInstaller (onefile mode), embedded data files are
     # extracted to a temp folder at sys._MEIPASS — NOT next to the .exe.
