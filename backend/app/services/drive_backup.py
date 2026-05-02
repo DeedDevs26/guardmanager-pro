@@ -19,9 +19,12 @@ from ..schemas import DriveStatusSchema
 SCOPES = ["https://www.googleapis.com/auth/drive.file"]
 
 
-def create_database_snapshot() -> Path:
-    """Creates a clean snapshot of the database, ensuring WAL is checkpointed."""
-    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+def create_database_snapshot(timestamp: datetime | None = None) -> Path:
+    """Creates a clean snapshot of the database, ensuring WAL is checkpointed.
+    Uses shutil.copy (not copy2) to ensure the backup file has a fresh modification time.
+    """
+    now = timestamp or datetime.now()
+    stamp = now.strftime("%Y%m%d-%H%M%S")
     target = PATHS.backups_dir / f"guardmanager-{stamp}.db"
     target.parent.mkdir(parents=True, exist_ok=True)
     
@@ -33,7 +36,7 @@ def create_database_snapshot() -> Path:
     except Exception as e:
         print(f"Warning: WAL checkpoint failed: {e}")
 
-    shutil.copy2(PATHS.database_file, target)
+    shutil.copy(PATHS.database_file, target)
     return target
 
 

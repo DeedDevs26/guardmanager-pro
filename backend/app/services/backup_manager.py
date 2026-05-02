@@ -156,8 +156,11 @@ def import_database_file(file_path: str) -> None:
 
 
 def run_backup(session: Session, settings: BackupSettingsSchema, is_automatic: bool = False) -> list[repository.BackupRunSchema]:
+    now = datetime.now()
+    started_at = now.isoformat()
+    
     destination = "google_drive" if settings.driveEnabled else "local"
-    run = repository.create_backup_run(session, destination=destination, is_automatic=is_automatic)
+    run = repository.create_backup_run(session, destination=destination, is_automatic=is_automatic, started_at=started_at)
     files_uploaded = 0
     bytes_uploaded = 0
 
@@ -168,7 +171,7 @@ def run_backup(session: Session, settings: BackupSettingsSchema, is_automatic: b
             folder_id = get_or_create_drive_folder(settings.googleDriveFolderName)
 
         if settings.includeDatabase:
-            snapshot = create_database_snapshot()
+            snapshot = create_database_snapshot(timestamp=now)
             files_uploaded += 1
             bytes_uploaded += snapshot.stat().st_size
             if settings.driveEnabled:

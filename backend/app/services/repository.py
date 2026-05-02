@@ -331,8 +331,9 @@ def list_backup_runs(session: Session) -> list[BackupRunSchema]:
     return [BackupRunSchema(id=r.id, startedAt=r.started_at, finishedAt=r.finished_at, status=r.status, errorMessage=r.error_message, filesUploaded=r.files_uploaded, bytesUploaded=r.bytes_uploaded, destination=r.destination, isAutomatic=bool(r.is_automatic)) for r in rows]
 
 
-def create_backup_run(session: Session, destination: str, is_automatic: bool = False) -> BackupRunSchema:
-    payload = BackupRunSchema(id=uuid4().hex, startedAt=_now_iso(), status="running", destination=destination, isAutomatic=is_automatic)
+def create_backup_run(session: Session, destination: str, is_automatic: bool = False, started_at: str | None = None) -> BackupRunSchema:
+    start_time = started_at or _now_iso()
+    payload = BackupRunSchema(id=uuid4().hex, startedAt=start_time, status="running", destination=destination, isAutomatic=is_automatic)
     _upsert(session, BackupRunModel(id=payload.id, started_at=payload.startedAt, status=payload.status, destination=destination, is_automatic=int(is_automatic)))
     session.flush()
     return payload
