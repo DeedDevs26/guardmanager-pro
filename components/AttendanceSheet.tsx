@@ -23,9 +23,8 @@ export const AttendanceSheet: React.FC = () => {
     return records.find(r => r.guardId === guard.id) || {
       id: '', guardId: guard.id, siteIds: [guard.siteId], date: selectedDate,
       morning: { status: 'Unmarked', foodTaken: false },
-      evening: { status: 'Unmarked', foodTaken: false },
+      extra: { status: 'Unmarked', foodTaken: false },
       night: { status: 'Unmarked', foodTaken: false },
-      overtimeHrs: 0
     };
   };
 
@@ -66,7 +65,7 @@ export const AttendanceSheet: React.FC = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">Shift Attendance</h2>
-          <p className="text-slate-500 text-sm">Mark Morning, Evening, and Night shifts separately.</p>
+          <p className="text-slate-500 text-sm">Mark Morning, Night, and Extra shifts separately.</p>
         </div>
         
         <div className="flex gap-4 bg-white p-2 rounded-lg border border-slate-200 shadow-sm" onClick={e => e.stopPropagation()}>
@@ -87,9 +86,8 @@ export const AttendanceSheet: React.FC = () => {
                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase sticky left-0 bg-slate-50">Guard Name</th>
                   <th className="px-4 py-4 text-xs font-bold text-slate-500 uppercase border-l border-slate-200 min-w-[200px]">Site(s)</th>
                   <th className="px-4 py-4 text-xs font-bold text-slate-500 uppercase text-center border-l border-slate-200">Morning</th>
-                  <th className="px-4 py-4 text-xs font-bold text-slate-500 uppercase text-center border-l border-slate-200">Evening</th>
                   <th className="px-4 py-4 text-xs font-bold text-slate-500 uppercase text-center border-l border-slate-200">Night</th>
-                  <th className="px-4 py-4 text-xs font-bold text-slate-500 uppercase text-center border-l border-slate-200">Overtime (Hrs)</th>
+                  <th className="px-4 py-4 text-xs font-bold text-slate-500 uppercase text-center border-l border-slate-200">Extra</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -147,7 +145,7 @@ export const AttendanceSheet: React.FC = () => {
                         </div>
                       </td>
                       
-                      {['morning', 'evening', 'night'].map((shift) => {
+                      {['morning', 'night', 'extra'].map((shift) => {
                          const sData = (record as any)[shift] as ShiftStatus;
                          return (
                           <td key={shift} className="px-4 py-4 text-center border-l border-slate-100">
@@ -182,16 +180,6 @@ export const AttendanceSheet: React.FC = () => {
                         );
                       })}
 
-                      <td className="px-4 py-4 text-center border-l border-slate-100">
-                        <input 
-                          type="number" 
-                          min="0" 
-                          max="12"
-                          className="w-16 text-center border border-slate-200 rounded p-1"
-                          value={record.overtimeHrs}
-                          onChange={e => updateRecord(guard.id, { overtimeHrs: Number(e.target.value) })}
-                        />
-                      </td>
                     </tr>
                   );
                 })}

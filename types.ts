@@ -36,9 +36,8 @@ export interface AttendanceRecord {
   siteIds: string[];
   date: string; // YYYY-MM-DD
   morning: ShiftStatus;
-  evening: ShiftStatus;
+  extra: ShiftStatus;
   night: ShiftStatus;
-  overtimeHrs: number;
 }
 
 export interface ExpenseRecord {

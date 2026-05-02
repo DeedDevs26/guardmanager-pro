@@ -43,9 +43,8 @@ class AttendanceRecordSchema(BaseModel):
     siteIds: list[str] = []
     date: str
     morning: ShiftStatusSchema
-    evening: ShiftStatusSchema
+    extra: ShiftStatusSchema
     night: ShiftStatusSchema
-    overtimeHrs: float = 0
 
 
 class ExpenseRecordSchema(BaseModel):

@@ -45,7 +45,7 @@ export const SalaryReport: React.FC = () => {
       let foodCount = 0;
 
       guardAttendance.forEach(record => {
-        ['morning', 'evening', 'night'].forEach(key => {
+        ['morning', 'night', 'extra'].forEach(key => {
           const shift = (record as any)[key];
           if (shift.status === 'Present') {
             presentShifts++;

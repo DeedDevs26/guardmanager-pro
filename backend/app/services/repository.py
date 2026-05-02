@@ -143,9 +143,8 @@ def list_attendance(session: Session) -> list[AttendanceRecordSchema]:
             siteIds=r.site_id.split(",") if r.site_id else [],
             date=r.date,
             morning=loads(r.morning_json),
-            evening=loads(r.evening_json),
+            extra=loads(r.extra_json),
             night=loads(r.night_json),
-            overtimeHrs=r.overtime_hrs,
         )
         for r in rows
     ]
@@ -161,9 +160,8 @@ def save_attendance(session: Session, payload: AttendanceRecordSchema) -> Attend
             site_id=",".join(payload.siteIds),
             date=payload.date,
             morning_json=dumps(payload.morning.model_dump()),
-            evening_json=dumps(payload.evening.model_dump()),
+            extra_json=dumps(payload.extra.model_dump()),
             night_json=dumps(payload.night.model_dump()),
-            overtime_hrs=payload.overtimeHrs,
         ),
     )
     payload.id = record_id
@@ -400,7 +398,21 @@ def seed_defaults(session: Session) -> None:
     existing_columns = {row[1] for row in result.fetchall()}
     if "is_automatic" not in existing_columns:
         session.execute(text("ALTER TABLE backup_runs ADD COLUMN is_automatic INTEGER DEFAULT 0"))
-        session.commit()
+    
+    # Migration for shift changes
+    result = session.execute(text("PRAGMA table_info(attendance_records)"))
+    att_columns = {row[1] for row in result.fetchall()}
+    if "evening_json" in att_columns and "extra_json" not in att_columns:
+        session.execute(text("ALTER TABLE attendance_records RENAME COLUMN evening_json TO extra_json"))
+    if "overtime_hrs" in att_columns:
+        # SQLite doesn't always support DROP COLUMN depending on version, 
+        # but we can just ignore it or try if supported.
+        try:
+            session.execute(text("ALTER TABLE attendance_records DROP COLUMN overtime_hrs"))
+        except:
+            pass # Legacy SQLite doesn't support DROP COLUMN, we'll just ignore it
+
+    session.commit()
 
     if session.scalar(select(GuardModel.id).limit(1)):
         return

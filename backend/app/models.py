@@ -47,9 +47,8 @@ class AttendanceRecordModel(Base):
     site_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
     date: Mapped[str] = mapped_column(String, nullable=False, index=True)
     morning_json: Mapped[str] = mapped_column(Text, nullable=False)
-    evening_json: Mapped[str] = mapped_column(Text, nullable=False)
+    extra_json: Mapped[str] = mapped_column(Text, nullable=False)
     night_json: Mapped[str] = mapped_column(Text, nullable=False)
-    overtime_hrs: Mapped[float] = mapped_column(Float, default=0, nullable=False)
 
 
 class ExpenseRecordModel(Base):
