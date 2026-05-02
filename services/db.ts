@@ -1,172 +1,133 @@
-import { Guard, Site, AttendanceRecord, ExpenseRecord, Invoice, AccountRecord, BankOption } from '../types';
+import { AccountRecord, AttendanceRecord, BankOption, BootstrapData, ExpenseRecord, Guard, Invoice, Site } from '../types';
+import { delJson, getJson, putJson } from './api';
 
-/**
- * A simple LocalStorage wrapper to simulate a SQL-like database offline.
- * In a real desktop app, this would connect to SQLite.
- */
+type Cache = BootstrapData;
 
-const STORAGE_KEYS = {
-  GUARDS: 'gmp_guards',
-  SITES: 'gmp_sites',
-  ATTENDANCE: 'gmp_attendance',
-  EXPENSES: 'gmp_expenses',
-  INVOICES: 'gmp_invoices',
-  ACCOUNTS: 'gmp_accounts',
-  INIT: 'gmp_init',
-  BANKS: 'gmp_banks'
+const cache: Cache = {
+  guards: [],
+  sites: [],
+  attendance: [],
+  expenses: [],
+  invoices: [],
+  accounts: [],
+  banks: [],
 };
 
-// Seed Data
-const seedData = () => {
-  if (localStorage.getItem(STORAGE_KEYS.INIT)) return;
+let initialized = false;
 
-  const banks: BankOption[] = [
-    { id: 'b1', bankName: 'HDFC BANK', accountName: 'BLACK CAT COMMANDO SECURITY FORCE', accountNumber: '50200116920705', ifsc: 'HDFC0005519', upiId: '9500427215@pz' },
-    { id: 'b2', bankName: 'STATE BANK OF INDIA', accountName: 'KALKIRAJ', accountNumber: '34434987057', ifsc: 'SBIN0009314', upiId: '' }
-  ];
+function replaceAll(data: BootstrapData) {
+  cache.guards = data.guards;
+  cache.sites = data.sites;
+  cache.attendance = data.attendance;
+  cache.expenses = data.expenses;
+  cache.invoices = data.invoices;
+  cache.accounts = data.accounts;
+  cache.banks = data.banks;
+}
 
-  localStorage.setItem(STORAGE_KEYS.BANKS, JSON.stringify(banks));
-
-  const sites: Site[] = [
-    { id: 's1', name: 'North Warehouse', clientName: 'Logistics Corp', contactNumber: '9876543210', location: 'Industrial Area A', gstNo: '29AAAAA0000A1Z5' },
-    { id: 's2', name: 'City Mall', clientName: 'Retail Giants', contactNumber: '9123456780', location: 'City Center', gstNo: '29BBBBB1111B1Z5' },
-  ];
-
-  const guards: Guard[] = [
-    { id: 'g1', name: 'Rajesh Kumar', code: 'SG-101', phone: '9988776655', aadhaar: '1234-5678-9012', siteId: 's1', salaryPerShift: 600, foodCostPerShift: 50, uniformDeduction: 0, joiningDate: '2023-01-15', status: 'Active' },
-    { id: 'g2', name: 'Amit Singh', code: 'SG-102', phone: '8877665544', aadhaar: '5678-1234-9012', siteId: 's1', salaryPerShift: 550, foodCostPerShift: 50, uniformDeduction: 100, joiningDate: '2023-03-10', status: 'Active' },
-    { id: 'g3', name: 'Suresh Patil', code: 'SG-103', phone: '7766554433', aadhaar: '9012-5678-1234', siteId: 's2', salaryPerShift: 700, foodCostPerShift: 60, uniformDeduction: 0, joiningDate: '2023-06-20', status: 'Active' },
-  ];
-
-  localStorage.setItem(STORAGE_KEYS.SITES, JSON.stringify(sites));
-  localStorage.setItem(STORAGE_KEYS.GUARDS, JSON.stringify(guards));
-  localStorage.setItem(STORAGE_KEYS.ATTENDANCE, JSON.stringify([]));
-  localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify([]));
-  localStorage.setItem(STORAGE_KEYS.ACCOUNTS, JSON.stringify([]));
-  localStorage.setItem(STORAGE_KEYS.INIT, 'true');
-};
-
-seedData();
-
-// Generic Helper
-const getCollection = <T>(key: string): T[] => {
-  const data = localStorage.getItem(key);
-  return data ? JSON.parse(data) : [];
-};
-
-const saveCollection = <T>(key: string, data: T[]) => {
-  localStorage.setItem(key, JSON.stringify(data));
-};
-
-// --- API ---
+function upsertById<T extends { id: string }>(items: T[], next: T) {
+  const idx = items.findIndex(item => item.id === next.id);
+  if (idx === -1) {
+    items.push(next);
+    return;
+  }
+  items[idx] = next;
+}
 
 export const db = {
+  async init() {
+    if (initialized) return;
+    const bootstrap = await getJson<BootstrapData>('/api/bootstrap');
+    replaceAll(bootstrap);
+    initialized = true;
+  },
   guards: {
-    getAll: () => getCollection<Guard>(STORAGE_KEYS.GUARDS),
-    add: (guard: Guard) => {
-      const list = getCollection<Guard>(STORAGE_KEYS.GUARDS);
-      list.push(guard);
-      saveCollection(STORAGE_KEYS.GUARDS, list);
+    getAll: () => cache.guards,
+    add: async (guard: Guard) => {
+      upsertById(cache.guards, guard);
+      await putJson(`/api/guards/${guard.id}`, guard);
     },
-    update: (guard: Guard) => {
-      const list = getCollection<Guard>(STORAGE_KEYS.GUARDS);
-      const idx = list.findIndex(g => g.id === guard.id);
-      if (idx !== -1) {
-        list[idx] = guard;
-        saveCollection(STORAGE_KEYS.GUARDS, list);
-      }
+    update: async (guard: Guard) => {
+      upsertById(cache.guards, guard);
+      await putJson(`/api/guards/${guard.id}`, guard);
     },
-    delete: (id: string) => {
-      const list = getCollection<Guard>(STORAGE_KEYS.GUARDS);
-      saveCollection(STORAGE_KEYS.GUARDS, list.filter(g => g.id !== id));
+    delete: async (id: string) => {
+      cache.guards = cache.guards.filter(guard => guard.id !== id);
+      await delJson(`/api/guards/${id}`);
     }
   },
   sites: {
-    getAll: () => getCollection<Site>(STORAGE_KEYS.SITES),
-    add: (site: Site) => {
-      const list = getCollection<Site>(STORAGE_KEYS.SITES);
-      list.push(site);
-      saveCollection(STORAGE_KEYS.SITES, list);
+    getAll: () => cache.sites,
+    add: async (site: Site) => {
+      upsertById(cache.sites, site);
+      await putJson(`/api/sites/${site.id}`, site);
     },
-    update: (site: Site) => {
-      const list = getCollection<Site>(STORAGE_KEYS.SITES);
-      const idx = list.findIndex(s => s.id === site.id);
-      if (idx !== -1) {
-        list[idx] = site;
-        saveCollection(STORAGE_KEYS.SITES, list);
-      }
+    update: async (site: Site) => {
+      upsertById(cache.sites, site);
+      await putJson(`/api/sites/${site.id}`, site);
     },
-    delete: (id: string) => {
-      const list = getCollection<Site>(STORAGE_KEYS.SITES);
-      saveCollection(STORAGE_KEYS.SITES, list.filter(s => s.id !== id));
+    delete: async (id: string) => {
+      cache.sites = cache.sites.filter(site => site.id !== id);
+      await delJson(`/api/sites/${id}`);
     }
   },
   attendance: {
-    getAll: () => getCollection<AttendanceRecord>(STORAGE_KEYS.ATTENDANCE),
-    getByDateAndSite: (date: string, siteId: string) => {
-      const all = getCollection<AttendanceRecord>(STORAGE_KEYS.ATTENDANCE);
-      return all.filter(r => r.date === date && r.siteId === siteId);
-    },
-    saveRecord: (record: AttendanceRecord) => {
-      const list = getCollection<AttendanceRecord>(STORAGE_KEYS.ATTENDANCE);
-      const idx = list.findIndex(r => r.guardId === record.guardId && r.date === record.date);
-      if (idx !== -1) {
-        list[idx] = record;
+    getAll: () => cache.attendance,
+    getByDateAndSite: (date: string, siteId: string) => cache.attendance.filter(record => record.date === date && record.siteIds.includes(siteId)),
+    saveRecord: async (record: AttendanceRecord) => {
+      const recordId = record.id || `${record.guardId}_${record.date}`;
+      const nextRecord = { ...record, id: recordId };
+      const idx = cache.attendance.findIndex(item => item.guardId === record.guardId && item.date === record.date);
+      if (idx === -1) {
+        cache.attendance.push(nextRecord);
       } else {
-        list.push(record);
+        cache.attendance[idx] = nextRecord;
       }
-      saveCollection(STORAGE_KEYS.ATTENDANCE, list);
+      await putJson(`/api/attendance/${recordId}`, nextRecord);
     }
   },
   expenses: {
-    getAll: () => getCollection<ExpenseRecord>(STORAGE_KEYS.EXPENSES),
-    add: (expense: ExpenseRecord) => {
-      const list = getCollection<ExpenseRecord>(STORAGE_KEYS.EXPENSES);
-      list.push(expense);
-      saveCollection(STORAGE_KEYS.EXPENSES, list);
+    getAll: () => cache.expenses,
+    add: async (expense: ExpenseRecord) => {
+      upsertById(cache.expenses, expense);
+      await putJson(`/api/expenses/${expense.id}`, expense);
     },
-    delete: (id: string) => {
-      const list = getCollection<ExpenseRecord>(STORAGE_KEYS.EXPENSES);
-      saveCollection(STORAGE_KEYS.EXPENSES, list.filter(e => e.id !== id));
+    delete: async (id: string) => {
+      cache.expenses = cache.expenses.filter(expense => expense.id !== id);
+      await delJson(`/api/expenses/${id}`);
     }
   },
   invoices: {
-    getAll: () => getCollection<Invoice>(STORAGE_KEYS.INVOICES),
-    add: (invoice: Invoice) => {
-      const list = getCollection<Invoice>(STORAGE_KEYS.INVOICES);
-      list.push(invoice);
-      saveCollection(STORAGE_KEYS.INVOICES, list);
+    getAll: () => cache.invoices,
+    add: async (invoice: Invoice) => {
+      upsertById(cache.invoices, invoice);
+      await putJson(`/api/invoices/${invoice.id}`, invoice);
     },
-    delete: (id: string) => {
-      const list = getCollection<Invoice>(STORAGE_KEYS.INVOICES);
-      saveCollection(STORAGE_KEYS.INVOICES, list.filter(i => i.id !== id));
+    delete: async (id: string) => {
+      cache.invoices = cache.invoices.filter(invoice => invoice.id !== id);
+      await delJson(`/api/invoices/${id}`);
     }
   },
   banks: {
-    getAll: () => getCollection<BankOption>(STORAGE_KEYS.BANKS),
-    add: (bank: BankOption) => {
-      const list = getCollection<BankOption>(STORAGE_KEYS.BANKS);
-      list.push(bank);
-      saveCollection(STORAGE_KEYS.BANKS, list);
+    getAll: () => cache.banks,
+    add: async (bank: BankOption) => {
+      upsertById(cache.banks, bank);
+      await putJson(`/api/banks/${bank.id}`, bank);
     },
-    delete: (id: string) => {
-      const list = getCollection<BankOption>(STORAGE_KEYS.BANKS);
-      saveCollection(STORAGE_KEYS.BANKS, list.filter(b => b.id !== id));
+    delete: async (id: string) => {
+      cache.banks = cache.banks.filter(bank => bank.id !== id);
+      await delJson(`/api/banks/${id}`);
     }
   },
   accounts: {
-    getAll: () => {
-      const list = getCollection<AccountRecord>(STORAGE_KEYS.ACCOUNTS);
-      return list.slice().sort((a, b) => b.date.localeCompare(a.date));
+    getAll: () => cache.accounts.slice().sort((a, b) => b.date.localeCompare(a.date)),
+    add: async (record: AccountRecord) => {
+      upsertById(cache.accounts, record);
+      await putJson(`/api/accounts/${record.id}`, record);
     },
-    add: (record: AccountRecord) => {
-      const list = getCollection<AccountRecord>(STORAGE_KEYS.ACCOUNTS);
-      list.push(record);
-      saveCollection(STORAGE_KEYS.ACCOUNTS, list);
-    },
-    delete: (id: string) => {
-      const list = getCollection<AccountRecord>(STORAGE_KEYS.ACCOUNTS);
-      saveCollection(STORAGE_KEYS.ACCOUNTS, list.filter(r => r.id !== id));
+    delete: async (id: string) => {
+      cache.accounts = cache.accounts.filter(record => record.id !== id);
+      await delJson(`/api/accounts/${id}`);
     }
   }
 };

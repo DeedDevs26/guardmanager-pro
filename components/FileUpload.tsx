@@ -66,16 +66,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({ label, onFileSelect, acc
         onDragOver={handleDrag}
         onDrop={handleDrop}
       >
-        <input 
-          type="file" 
-          id={label}
-          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
-          accept={acceptedFormats}
-          onChange={handleChange}
-        />
-        
         {fileName ? (
-          <div className="flex items-center gap-3 w-full">
+          <div className="flex items-center gap-3 w-full relative z-10">
             <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary">
               <span className="material-icons">{fileName.toLowerCase().endsWith('.pdf') ? 'picture_as_pdf' : 'image'}</span>
             </div>
@@ -84,20 +76,30 @@ export const FileUpload: React.FC<FileUploadProps> = ({ label, onFileSelect, acc
               <p className="text-[10px] text-slate-400">File attached</p>
             </div>
             <button 
+              type="button"
               onClick={clearFile}
-              className="p-1 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-full"
+              className="p-1 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-full transition-colors relative z-20"
             >
               <span className="material-icons text-sm">close</span>
             </button>
           </div>
         ) : (
-          <div className="text-center">
-            <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 mx-auto mb-2">
-              <span className="material-icons">cloud_upload</span>
+          <>
+            <input 
+              type="file" 
+              id={label}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+              accept={acceptedFormats}
+              onChange={handleChange}
+            />
+            <div className="text-center">
+              <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 mx-auto mb-2">
+                <span className="material-icons">cloud_upload</span>
+              </div>
+              <p className="text-sm text-slate-500"><span className="text-primary font-bold">Click to upload</span> or drag and drop</p>
+              <p className="text-[10px] text-slate-400 mt-1">PDF, PNG, JPG (max 5MB)</p>
             </div>
-            <p className="text-sm text-slate-500"><span className="text-primary font-bold">Click to upload</span> or drag and drop</p>
-            <p className="text-[10px] text-slate-400 mt-1">PDF, PNG, JPG (max 5MB)</p>
-          </div>
+          </>
         )}
       </div>
     </div>

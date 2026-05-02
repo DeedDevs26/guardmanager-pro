@@ -50,7 +50,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
           </button>
         </div>
 
-        <nav className="flex-1 px-4 py-4 overflow-y-auto overflow-x-hidden custom-scrollbar">
+        <nav className="flex-1 px-4 py-4 overflow-y-auto overflow-x-hidden no-scrollbar">
           <NavItem view="DASHBOARD" icon="dashboard" label="Dashboard" />
           <NavItem view="GUARDS" icon="people" label="Employees" />
           <NavItem view="SITES" icon="domain" label="Sites" />
@@ -59,6 +59,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onNavigat
           <NavItem view="SALARY" icon="payments" label="Salary Report" />
           <NavItem view="INVOICE" icon="receipt" label="Invoice" />
           <NavItem view="ACCOUNTS" icon="account_balance_wallet" label="Accounts" />
+          <NavItem view="SETTINGS" icon="settings" label="Settings" />
         </nav>
 
         {!isCollapsed && (

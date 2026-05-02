@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { jsPDF } from 'jspdf';
 import { db } from '../services/db';
+import { postJson } from '../services/api';
 import { AccountRecord } from '../types';
 
 // ── Categories ──────────────────────────────────────────────────────────────
@@ -66,7 +67,7 @@ function exportPDF(
   doc.setTextColor(60, 60, 60);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
-  doc.text(`Period: ${fmtDate(startDate)}  →  ${fmtDate(endDate)}`, margin, y);
+  doc.text(`Period: ${fmtDate(startDate)} to ${fmtDate(endDate)}`, margin, y);
   y += 10;
 
   // ── Summary boxes ──
@@ -162,7 +163,12 @@ function exportPDF(
   doc.setTextColor(150, 150, 150);
   doc.text(`Total ${filtered.length} record(s)  |  GuardManager Pro — Confidential`, margin, y);
 
-  doc.save(`account-statement-${startDate}-to-${endDate}.pdf`);
+  const filename = `account-statement-${startDate}-to-${endDate}.pdf`;
+  const base64 = doc.output('datauristring');
+
+  postJson('/api/export/pdf', { filename, base64 })
+    .then(() => alert(`Statement saved to configured exports folder as ${filename}`))
+    .catch(err => alert('Failed to save PDF: ' + (err instanceof Error ? err.message : String(err))));
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
@@ -252,7 +258,7 @@ export const Accounts: React.FC = () => {
 
   const monthLabel = startDate === endDate
     ? fmtDate(startDate)
-    : `${fmtDate(startDate)} – ${fmtDate(endDate)}`;
+    : `${fmtDate(startDate)} - ${fmtDate(endDate)}`;
 
   return (
     <div className="p-6 h-full flex flex-col gap-5 overflow-auto">
@@ -509,11 +515,6 @@ export const Accounts: React.FC = () => {
                   </strong>
                 </span>
               </div>
-              <button onClick={handleExportPDF}
-                className="flex items-center gap-1.5 bg-primary text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-700 transition">
-                <span className="material-icons text-sm">picture_as_pdf</span>
-                Export PDF
-              </button>
             </div>
           )}
         </div>

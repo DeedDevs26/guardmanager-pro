@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import jsPDF from 'jspdf';
 import { db } from '../services/db';
 import { Invoice as InvoiceType, InvoiceLineItem, InvoiceCompany, InvoiceBankDetails, BankOption } from '../types';
+import { postJson } from '../services/api';
 import { logoBase64 } from './logoBase64';
 import { qrWithGst, qrWithoutGst } from './qrCodesBase64';
 
@@ -9,18 +10,34 @@ import { qrWithGst, qrWithoutGst } from './qrCodesBase64';
 
 const getTodayDate = () => new Date().toISOString().split('T')[0];
 
-const getFinancialYear = (): string => {
+const getFinancialYearFormat = (): string => {
     const now = new Date();
     const month = now.getMonth() + 1;
     const year = now.getFullYear();
-    if (month >= 4) return `${year}-${String(year + 1).slice(2)}`;
-    return `${year - 1}-${String(year).slice(2)}`;
+    const startYear = month >= 4 ? year : year - 1;
+    const endYear = startYear + 1;
+    return `${String(startYear).slice(2)}-${String(endYear).slice(2)}`;
 };
 
-const generateInvoiceNumber = (): string => {
-    const fy = getFinancialYear();
-    const rand = Math.floor(1000 + Math.random() * 9000);
-    return `INV/${fy}/${rand}`;
+const generateInvoiceNumber = (existingInvoices: InvoiceType[] = []): string => {
+    const fy = getFinancialYearFormat();
+    const prefix = `INV/${fy}/`;
+    
+    const fyInvoices = existingInvoices.filter(inv => inv.invoiceNumber && inv.invoiceNumber.startsWith(prefix));
+    let maxSerial = 0;
+    
+    fyInvoices.forEach(inv => {
+        const parts = inv.invoiceNumber.split('/');
+        if (parts.length === 3) {
+            const serial = parseInt(parts[2], 10);
+            if (!isNaN(serial) && serial > maxSerial) {
+                maxSerial = serial;
+            }
+        }
+    });
+    
+    const nextSerial = maxSerial + 1;
+    return `${prefix}${String(nextSerial).padStart(2, '0')}`;
 };
 
 const numberToWordsIndian = (num: number): string => {
@@ -68,7 +85,7 @@ const COMPANY_NAME_WITHOUT_GST = 'BCCSF(Security Services)';
 
 const defaultCompany: InvoiceCompany = {
     name: COMPANY_NAME_WITH_GST,
-    address: 'No 5 18/414 PN Road, Puspa Bus Stop, Opp.\nSecond Floor, Tirupur – 641 602',
+    address: 'No 5 18/414 PN Road, Puspa Bus Stop, Opp.\nSecond Floor, Tirupur - 641 602',
     phone: '9500427215',
     email: 'bccsec.force@gmail.com',
     pan: 'ABFFB6765P',
@@ -185,34 +202,33 @@ const InvoicePreview: React.FC<PreviewProps> = ({
                 <tr style={{ background: '#1f4e78', color: '#fff', fontSize: '12px' }}>
                     <th style={{ padding: '6px 8px', textAlign: 'center', width: '40px', border: '1px solid #1f4e78' }}>S.No</th>
                     <th style={{ padding: '6px 8px', textAlign: 'left', border: '1px solid #1f4e78' }}>Description</th>
-                    <th style={{ padding: '6px 8px', textAlign: 'center', border: '1px solid #1f4e78' }}>No. of Guards</th>
-                    <th style={{ padding: '6px 8px', textAlign: 'center', border: '1px solid #1f4e78' }}>No. of Days</th>
-                    <th style={{ padding: '6px 8px', textAlign: 'center', border: '1px solid #1f4e78' }}>Rate (₹)</th>
-                    <th style={{ padding: '6px 8px', textAlign: 'center', border: '1px solid #1f4e78' }}>Value (₹)</th>
+                    <th style={{ padding: '6px 8px', textAlign: 'center', width: '80px', border: '1px solid #1f4e78' }}>No. of Guards</th>
+                    <th style={{ padding: '6px 8px', textAlign: 'center', width: '80px', border: '1px solid #1f4e78' }}>No. of Days</th>
+                    <th style={{ padding: '6px 8px', textAlign: 'center', width: '80px', border: '1px solid #1f4e78' }}>Rate (₹)</th>
+                    <th style={{ padding: '6px 8px', textAlign: 'center', width: '80px', border: '1px solid #1f4e78' }}>Value (₹)</th>
                 </tr>
             </thead>
             <tbody>
                 {lineItems.map((item, idx) => (
                     <tr key={item.id} style={{ background: '#fff', color: '#000' }}>
-                        <td style={{ padding: '6px 8px', textAlign: 'center', borderLeft: '1px solid #1f4e78', borderRight: '1px solid #1f4e78' }}>{idx + 1}</td>
-                        <td style={{ padding: '6px 8px', borderRight: '1px solid #1f4e78' }}>{item.description}</td>
-                        <td style={{ padding: '6px 8px', textAlign: 'center', borderRight: '1px solid #1f4e78' }}>{item.guards}</td>
-                        <td style={{ padding: '6px 8px', textAlign: 'center', borderRight: '1px solid #1f4e78' }}>{item.days}</td>
-                        <td style={{ padding: '6px 8px', textAlign: 'center', borderRight: '1px solid #1f4e78' }}>{item.rate}</td>
-                        <td style={{ padding: '6px 8px', textAlign: 'center', borderRight: '1px solid #1f4e78' }}>{item.value}</td>
+                        <td style={{ padding: '6px 8px', textAlign: 'center', borderLeft: '1px solid #1f4e78', borderRight: '1px solid #1f4e78', borderBottom: '1px solid #eee' }}>{idx + 1}</td>
+                        <td style={{ padding: '6px 8px', borderRight: '1px solid #1f4e78', borderBottom: '1px solid #eee' }}>{item.description}</td>
+                        <td style={{ padding: '6px 8px', textAlign: 'center', borderRight: '1px solid #1f4e78', borderBottom: '1px solid #eee' }}>{item.guards}</td>
+                        <td style={{ padding: '6px 8px', textAlign: 'center', borderRight: '1px solid #1f4e78', borderBottom: '1px solid #eee' }}>{item.days}</td>
+                        <td style={{ padding: '6px 8px', textAlign: 'center', borderRight: '1px solid #1f4e78', borderBottom: '1px solid #eee' }}>{item.rate}</td>
+                        <td style={{ padding: '6px 8px', textAlign: 'center', borderRight: '1px solid #1f4e78', borderBottom: '1px solid #eee' }}>{item.value}</td>
                     </tr>
                 ))}
+                {/* Total Row */}
+                <tr style={{ background: '#1f4e78', color: '#fff', fontWeight: 'bold', fontSize: '12px' }}>
+                    <td colSpan={2} style={{ padding: '6px 8px', textAlign: 'right', paddingRight: '20px' }}>Total</td>
+                    <td style={{ padding: '6px 8px', textAlign: 'center' }}>{lineItems.reduce((s, i) => s + i.guards, 0)}</td>
+                    <td style={{ padding: '6px 8px', textAlign: 'center' }}>{lineItems.reduce((s, i) => s + i.days, 0)}</td>
+                    <td style={{ padding: '6px 8px', textAlign: 'center' }}></td>
+                    <td style={{ padding: '6px 8px', textAlign: 'center' }}>{subTotal}</td>
+                </tr>
             </tbody>
         </table>
-
-        {/* Table Totals Header */}
-        <div style={{ display: 'flex', background: '#1f4e78', color: '#fff', fontWeight: 'bold', padding: '6px 8px', fontSize: '12px' }}>
-            <div style={{ flex: '1', textAlign: 'right', paddingRight: '20px' }}>Total</div>
-            <div style={{ width: '80px', textAlign: 'center' }}>{lineItems.reduce((s, i) => s + i.guards, 0)}</div>
-            <div style={{ width: '80px', textAlign: 'center' }}>{lineItems.reduce((s, i) => s + i.days, 0)}</div>
-            <div style={{ width: '80px', textAlign: 'center' }}></div>
-            <div style={{ width: '80px', textAlign: 'center' }}>{subTotal}</div>
-        </div>
 
         {/* GST block aligned to right exactly under value */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px', marginBottom: '16px', fontSize: '12px', fontWeight: 'bold' }}>
@@ -349,7 +365,7 @@ const SavedInvoicesList: React.FC<SavedInvoicesProps> = ({ invoices, onDelete, o
 export const Invoice: React.FC = () => {
     const previewRef = useRef<HTMLDivElement>(null!);
 
-    const [invoiceNumber, setInvoiceNumber] = useState(generateInvoiceNumber());
+    const [invoiceNumber, setInvoiceNumber] = useState(() => generateInvoiceNumber(db.invoices.getAll()));
     const [invoiceDate, setInvoiceDate] = useState(getTodayDate());
     const [invoiceType, setInvoiceType] = useState<'with_gst' | 'without_gst'>('without_gst');
     const [company, setCompany] = useState<InvoiceCompany>({ ...defaultCompany, name: COMPANY_NAME_WITHOUT_GST });
@@ -424,9 +440,21 @@ export const Invoice: React.FC = () => {
             createdAt: new Date().toISOString(),
         };
         db.invoices.add(invoice);
-        setSavedInvoices(db.invoices.getAll());
+        const updatedInvoices = db.invoices.getAll();
+        setSavedInvoices(updatedInvoices);
         setSaveMsg('Invoice saved!');
-        setTimeout(() => setSaveMsg(''), 2500);
+        
+        // Auto-prepare next invoice
+        setTimeout(() => {
+            setSaveMsg('');
+            setInvoiceNumber(generateInvoiceNumber(updatedInvoices));
+            setInvoiceDate(getTodayDate());
+            // Keep current type and company, but clear client
+            setClientName('');
+            setClientAddress('');
+            setClientGstNumber('');
+            setLineItems([newLineItem()]);
+        }, 1500);
     };
 
     // ── Load saved invoice into form ──
@@ -453,9 +481,25 @@ export const Invoice: React.FC = () => {
         }
     };
 
+    const handleDeleteBank = () => {
+        if (selectedBankId === 'custom') return;
+        if (confirm('Are you sure you want to delete this bank option?')) {
+            db.banks.delete(selectedBankId);
+            const updatedBanks = db.banks.getAll();
+            setSavedBanks(updatedBanks);
+            if (updatedBanks.length > 0) {
+                setSelectedBankId(updatedBanks[0].id);
+                setBankDetails(updatedBanks[0]);
+            } else {
+                setSelectedBankId('custom');
+                setBankDetails(defaultBank);
+            }
+        }
+    };
+
     // ── New Invoice ──
     const handleNew = () => {
-        setInvoiceNumber(generateInvoiceNumber());
+        setInvoiceNumber(generateInvoiceNumber(db.invoices.getAll()));
         setInvoiceDate(getTodayDate());
         setInvoiceType('without_gst');
         setCompany({ ...defaultCompany, name: COMPANY_NAME_WITHOUT_GST });
@@ -470,25 +514,189 @@ export const Invoice: React.FC = () => {
 
     // ── Print ──
     const handlePrint = () => {
-        const printContent = document.getElementById('invoice-preview-content');
-        if (!printContent) return;
-        const win = window.open('', '_blank', 'width=900,height=700');
-        if (!win) return;
-        win.document.write(`
+        const activeQr = invoiceType === 'with_gst' ? qrWithGst : qrWithoutGst;
+        const subTotalVal = subTotal;
+        const cgstVal = cgstAmount;
+        const sgstVal = sgstAmount;
+        const totalVal = totalAmount;
+
+        const itemsRows = lineItems.map((item, idx) => `
+            <tr>
+                <td style="padding:8px;text-align:center;border:1px solid #1f4e78">${idx + 1}</td>
+                <td style="padding:8px;border:1px solid #1f4e78">${item.description}</td>
+                <td style="padding:8px;text-align:center;border:1px solid #1f4e78">${item.guards}</td>
+                <td style="padding:8px;text-align:center;border:1px solid #1f4e78">${item.days}</td>
+                <td style="padding:8px;text-align:right;border:1px solid #1f4e78">${item.rate}</td>
+                <td style="padding:8px;text-align:right;border:1px solid #1f4e78">${item.value}</td>
+            </tr>
+        `).join('');
+
+        const html = `
+      <!DOCTYPE html>
       <html>
-        <head>
-          <title>${invoiceNumber}</title>
-          <style>
-            body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
-            @media print { body { padding: 0; } }
-          </style>
-        </head>
-        <body>${printContent.outerHTML}</body>
-      </html>
-    `);
-        win.document.close();
-        win.focus();
-        setTimeout(() => { win.print(); win.close(); }, 300);
+      <head>
+        <title>${invoiceNumber}</title>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
+        <style>
+          * { box-sizing: border-box; margin: 0; padding: 0; -webkit-print-color-adjust: exact; }
+          body { font-family: 'Inter', sans-serif; font-size: 11px; color: #000; padding: 40px; background: white; }
+          @page { size: A4 portrait; margin: 0; }
+          @media print { body { padding: 30px; } }
+          
+          .border-frame { border: 2px solid #1f4e78; padding: 25px; min-height: 100vh; position: relative; }
+          
+          .header-bar { background: #1f4e78; color: white; padding: 8px 30px; text-align: right; font-family: 'Outfit', sans-serif; font-size: 20px; font-weight: 700; margin-bottom: 20px; }
+          
+          .company-section { display: flex; justify-content: space-between; margin-bottom: 20px; }
+          .company-info h2 { font-family: 'Outfit', sans-serif; font-size: 18px; color: #1f4e78; text-transform: uppercase; margin-bottom: 5px; }
+          .company-info p { line-height: 1.4; color: #333; }
+          
+          .bill-to-header { background: #1f4e78; color: white; padding: 5px 10px; font-weight: 700; font-size: 12px; margin-bottom: 10px; }
+          .billing-flex { display: flex; justify-content: space-between; margin-bottom: 25px; }
+          .client-info h3 { font-size: 14px; color: #000; text-transform: uppercase; margin-bottom: 3px; }
+          .invoice-meta { font-weight: 700; border-collapse: collapse; }
+          .invoice-meta td { padding: 2px 0; }
+          
+          table.main-table { width: 100%; border-collapse: collapse; border: 1px solid #1f4e78; margin-bottom: 0; }
+          table.main-table th { background: #1f4e78; color: white; padding: 10px 8px; font-size: 11px; text-transform: uppercase; }
+          
+          .totals-bar { display: flex; background: #1f4e78; color: white; font-weight: 700; padding: 8px; font-size: 11px; }
+          
+          .tax-block { display: flex; justify-content: flex-end; margin-top: 5px; margin-bottom: 20px; font-weight: 700; }
+          .tax-table { width: 280px; }
+          .tax-table td { padding: 3px 8px; }
+          .grand-total { background: #1f4e78; color: white; padding: 6px 8px !important; }
+
+          .bank-qr-section { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+          .bank-details h4 { text-decoration: underline; margin-bottom: 5px; }
+          .qr-code { width: 100px; height: 100px; border: 1px solid #eee; }
+
+          .words-bar { background: #1f4e78; color: white; padding: 6px 10px; font-weight: 700; font-size: 11px; margin-bottom: 15px; }
+          
+          .signatures { display: flex; flex-direction: column; align-items: flex-end; margin-top: 50px; font-weight: 700; }
+          .sig-line { margin-top: 60px; border-top: 1px solid #1f4e78; padding-top: 5px; width: 200px; text-align: center; }
+        </style>
+      </head>
+      <body>
+        <div class="border-frame">
+          <div class="header-bar">INVOICE</div>
+          
+          <div class="company-section">
+            <div class="company-info">
+              <h2>${company.name}</h2>
+              <p>${company.address.split('\n').join('<br>')}</p>
+              <p>Phone: ${company.phone} | Email: ${company.email}</p>
+              <p><strong>${invoiceType === 'with_gst' ? 'GSTNO: ' + company.gstNumber + ' | ' : ''} PAN No: ${company.pan}</strong></p>
+              ${invoiceType === 'with_gst' ? '<p><strong>SAC CODE: ' + (company.sacCode || '998525') + '</strong></p>' : ''}
+            </div>
+            <div class="logo">
+              <img src="${logoBase64}" style="height: 80px; width: auto;" />
+            </div>
+          </div>
+          
+          <div class="bill-to-header">Bill To:</div>
+          <div class="billing-flex">
+            <div class="client-info">
+              <h3>${clientName}</h3>
+              <p style="white-space: pre-wrap; padding-left: 10px;">${clientAddress}</p>
+              ${invoiceType === 'with_gst' ? '<p style="margin-top: 10px;"><strong>GSTNO: ' + clientGstNumber + '</strong></p>' : ''}
+            </div>
+            <div class="meta-info">
+              <table class="invoice-meta">
+                <tr><td style="width: 100px">Invoice No</td><td>: ${invoiceNumber}</td></tr>
+                <tr><td>Invoice Date</td><td>: ${invoiceDate}</td></tr>
+              </table>
+            </div>
+          </div>
+          
+          <table class="main-table">
+            <thead>
+              <tr>
+                <th style="width: 50px">S.No</th>
+                <th style="text-align: left">Description</th>
+                <th style="width: 90px">Guards</th>
+                <th style="width: 90px">Days</th>
+                <th style="width: 100px; text-align: right">Rate (₹)</th>
+                <th style="width: 100px; text-align: right">Value (₹)</th>
+              </tr>
+            </thead>
+            <tbody>${itemsRows}</tbody>
+          </table>
+          
+          <div class="totals-bar">
+            <div style="flex: 1; text-align: right; padding-right: 20px;">Total</div>
+            <div style="width: 90px; text-align: center; border-left: 1px solid rgba(255,255,255,0.3)">${lineItems.reduce((s, i) => s + i.guards, 0)}</div>
+            <div style="width: 90px; text-align: center; border-left: 1px solid rgba(255,255,255,0.3)">${lineItems.reduce((s, i) => s + i.days, 0)}</div>
+            <div style="width: 100px; text-align: center; border-left: 1px solid rgba(255,255,255,0.3)"></div>
+            <div style="width: 100px; text-align: right; padding-right: 8px; border-left: 1px solid rgba(255,255,255,0.3)">${subTotalVal}</div>
+          </div>
+          
+          <div class="tax-block">
+            <table class="tax-table">
+              ${invoiceType === 'with_gst' ? `
+              <tr><td style="text-align: right">Subtotal:</td><td style="text-align: right">${subTotalVal}</td></tr>
+              <tr><td style="text-align: right">SGST (${sgstPercent}%):</td><td style="text-align: right">${sgstVal.toFixed(2)}</td></tr>
+              <tr><td style="text-align: right">CGST (${cgstPercent}%):</td><td style="text-align: right">${cgstVal.toFixed(2)}</td></tr>
+              ` : ''}
+              <tr class="grand-total"><td style="text-align: right">Grand Total:</td><td style="text-align: right">₹ ${totalVal.toFixed(2)}</td></tr>
+            </table>
+          </div>
+          
+          <div class="bank-qr-section">
+            <div class="bank-details">
+              <h4>Bank Details:</h4>
+              <table style="font-weight: 700">
+                <tr><td style="width: 110px">Bank Name</td><td>: ${bankDetails.bankName}</td></tr>
+                <tr><td>Account Name</td><td>: ${bankDetails.accountName}</td></tr>
+                <tr><td>Acc Number</td><td>: ${bankDetails.accountNumber}</td></tr>
+                <tr><td>IFSC Code</td><td>: ${bankDetails.ifsc}</td></tr>
+                ${(bankDetails as any).upiId ? '<tr><td>UPI ID</td><td>: ' + (bankDetails as any).upiId + '</td></tr>' : ''}
+              </table>
+            </div>
+            <div class="qr-code">
+              <img src="${activeQr}" style="width: 100%; height: 100%;" />
+            </div>
+          </div>
+          
+          <div class="words-bar">
+            Amount : Rupees ${numberToWordsIndian(totalVal)} Only
+          </div>
+          
+          <div style="font-weight: 700; margin-bottom: 40px">
+            Note: Kindly make the payment on or before the 3rd of every month.
+          </div>
+          
+          <div class="signatures">
+            <div>for ${company.name}</div>
+            <div class="sig-line">Authorized Signatory</div>
+          </div>
+        </div>
+      </body>
+      </html>`;
+
+        // Modern Direct Print Fix: Use hidden iframe to bypass browser window issues
+        let iframe = document.getElementById('print-iframe') as HTMLIFrameElement;
+        if (!iframe) {
+            iframe = document.createElement('iframe');
+            iframe.id = 'print-iframe';
+            iframe.style.position = 'absolute';
+            iframe.style.width = '0px';
+            iframe.style.height = '0px';
+            iframe.style.border = 'none';
+            document.body.appendChild(iframe);
+        }
+
+        const doc = iframe.contentWindow?.document || iframe.contentDocument;
+        if (!doc) return;
+
+        doc.open();
+        doc.write(html);
+        doc.close();
+
+        setTimeout(() => {
+            iframe.contentWindow?.focus();
+            iframe.contentWindow?.print();
+        }, 800);
     };
 
     // ── Download PDF ──
@@ -744,7 +952,12 @@ export const Invoice: React.FC = () => {
         y += 20;
         doc.text('Authorized signatory', pageW - margin, y, { align: 'right' });
 
-        doc.save(`${invoiceNumber.replace(/\//g, '-')}.pdf`);
+        const filename = `${invoiceNumber.replace(/\//g, '-')}.pdf`;
+        const base64 = doc.output('datauristring');
+
+        postJson('/api/export/pdf', { filename, base64 })
+            .then(() => alert(`Invoice saved to configured exports folder as ${filename}`))
+            .catch(err => alert('Failed to save PDF: ' + (err instanceof Error ? err.message : String(err))));
     };
 
     // ─── Render ──────────────────────────────────────────────────────────────
@@ -773,18 +986,11 @@ export const Invoice: React.FC = () => {
                         Save Invoice
                     </button>
                     <button
-                        onClick={handlePrint}
-                        className="flex items-center gap-2 px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition text-sm font-medium"
-                    >
-                        <span className="material-icons text-sm">print</span>
-                        Print
-                    </button>
-                    <button
                         onClick={handleDownloadPDF}
                         className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium"
                     >
                         <span className="material-icons text-sm">picture_as_pdf</span>
-                        Download PDF
+                        Save PDF
                     </button>
                 </div>
             </div>
@@ -1150,25 +1356,36 @@ export const Invoice: React.FC = () => {
                         <div>
                             <div className="flex justify-between items-center mb-3">
                                 <h3 className="font-bold text-slate-700 text-sm uppercase tracking-wide">Bank Details</h3>
-                                <select
-                                    className="border border-slate-300 rounded text-xs px-2 py-1 bg-white text-slate-700 font-medium cursor-pointer"
-                                    value={selectedBankId}
-                                    onChange={(e) => {
-                                        const val = e.target.value;
-                                        setSelectedBankId(val);
-                                        if (val === 'custom') {
-                                            setBankDetails({ bankName: '', accountName: '', accountNumber: '', ifsc: '', upiId: '' } as any);
-                                        } else {
-                                            const bank = savedBanks.find(b => b.id === val);
-                                            if (bank) setBankDetails(bank);
-                                        }
-                                    }}
-                                >
-                                    {savedBanks.map(b => (
-                                        <option key={b.id} value={b.id}>{b.bankName} - {b.accountName}</option>
-                                    ))}
-                                    <option value="custom" className="font-bold text-primary">+ Custom / New Bank</option>
-                                </select>
+                                <div className="flex items-center gap-2">
+                                    <select
+                                        className="border border-slate-300 rounded text-xs px-2 py-1 bg-white text-slate-700 font-medium cursor-pointer"
+                                        value={selectedBankId}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            setSelectedBankId(val);
+                                            if (val === 'custom') {
+                                                setBankDetails({ bankName: '', accountName: '', accountNumber: '', ifsc: '', upiId: '' } as any);
+                                            } else {
+                                                const bank = savedBanks.find(b => b.id === val);
+                                                if (bank) setBankDetails(bank);
+                                            }
+                                        }}
+                                    >
+                                        {savedBanks.map(b => (
+                                            <option key={b.id} value={b.id}>{b.bankName} - {b.accountName}</option>
+                                        ))}
+                                        <option value="custom" className="font-bold text-primary">+ Custom / New Bank</option>
+                                    </select>
+                                    {selectedBankId !== 'custom' && (
+                                        <button 
+                                            onClick={handleDeleteBank}
+                                            className="text-slate-300 hover:text-red-500 transition-colors"
+                                            title="Delete this bank option"
+                                        >
+                                            <span className="material-icons text-base">delete</span>
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                             <div className="grid grid-cols-2 gap-2">
                                 {([

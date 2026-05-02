@@ -23,8 +23,8 @@ export const Dashboard: React.FC<{ onNavigate: (view: any) => void }> = ({ onNav
     let shiftsToday = 0;
     todayAttendance.forEach(a => {
       if (a.morning.status === 'Present') shiftsToday++;
-      if (a.evening.status === 'Present') shiftsToday++;
       if (a.night.status === 'Present') shiftsToday++;
+      if (a.extra.status === 'Present') shiftsToday++;
     });
 
     // Calculate approximate monthly expense (current month)

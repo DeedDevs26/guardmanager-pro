@@ -8,6 +8,7 @@ import { Expenses } from './components/Expenses';
 import { SalaryReport } from './components/SalaryReport';
 import { Invoice } from './components/Invoice';
 import { Accounts } from './components/Accounts';
+import { Settings } from './components/settings/Settings';
 import { ViewState } from './types';
 
 const App: React.FC = () => {
@@ -23,6 +24,7 @@ const App: React.FC = () => {
       {view === 'SALARY' && <SalaryReport />}
       {view === 'INVOICE' && <Invoice />}
       {view === 'ACCOUNTS' && <Accounts />}
+      {view === 'SETTINGS' && <Settings />}
     </Layout>
   );
 };

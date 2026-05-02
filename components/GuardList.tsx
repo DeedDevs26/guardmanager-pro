@@ -180,7 +180,7 @@ export const GuardList: React.FC = () => {
                       setEditingGuard(guard); 
                       setSelectedFiles({ idProofAadhaar: null, idProofPan: null, idProofPhoto: null, idProofOthers: [] });
                       setIsModalOpen(true); 
-                    }} className="text-secondary hover:text-blue-800 mr-3 transition-colors">
+                    }} className="text-blue-400 hover:text-blue-600 mr-3 transition-colors">
                       <span className="material-icons text-lg">edit</span>
                     </button>
                     <button onClick={() => handleDelete(guard.id)} className="text-red-400 hover:text-red-600 transition-colors">
