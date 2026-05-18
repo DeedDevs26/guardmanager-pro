@@ -59,10 +59,20 @@ def restore_backup_bundle(backup_id: str) -> None:
 
     shutil.copy2(db_file, PATHS.database_file)
 
-    # BUG-03 fix: dispose engine again after the file swap so the connection
-    # pool discards any stale state and reconnects to the restored DB file.
-    from ..database import engine
-    engine.dispose()
+    # BUG-03 fix: completely re-initialize the connection engine post-swap
+    # so the connection pool discards stale state, and ensure tables and defaults.
+    from ..database import Base, engine, reinit_database, session_scope
+    from . import repository
+    reinit_database()
+    
+    # Ensure tables exist and seed defaults
+    try:
+        Base.metadata.create_all(bind=engine)
+        with session_scope() as session:
+            repository.seed_defaults(session)
+        log_message("Database schemas and defaults initialized post-restore.")
+    except Exception as e:
+        log_message(f"WARN: Post-restore database initialization failed: {e}")
     
     # 2. Restore Documents if present
     if doc_dir.exists():
@@ -144,13 +154,20 @@ def import_database_file(file_path: str) -> None:
             except:
                 pass
 
-    # 3. Re-initialize engine
+    # 3. Re-initialize engine and ensure schemas/defaults
     try:
-        from ..database import engine
-        engine.dispose()
-        log_message("Engine re-disposed (cleaned up).")
+        from ..database import Base, engine, reinit_database, session_scope
+        from . import repository
+        reinit_database()
+        log_message("Engine re-initialized successfully.")
+        
+        # Ensure tables exist and seed defaults
+        Base.metadata.create_all(bind=engine)
+        with session_scope() as session:
+            repository.seed_defaults(session)
+        log_message("Database schemas and defaults initialized post-import.")
     except Exception as e:
-        log_message(f"WARN: Final engine disposal failed: {e}")
+        log_message(f"WARN: Engine re-initialization/setup failed: {e}")
         
     log_message("FINISH: Import complete.")
 

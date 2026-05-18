@@ -3,7 +3,7 @@ from pathlib import Path
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
@@ -41,7 +41,7 @@ def create_app() -> FastAPI:
     @app.exception_handler(Exception)
     async def global_exception_handler(request, exc):
         log_message(f"GLOBAL EXCEPTION: {exc}")
-        return HTTPException(status_code=500, detail=str(exc))
+        return JSONResponse(status_code=500, content={"detail": str(exc)})
 
     try:
         log_message("Starting app initialization...")
