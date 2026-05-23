@@ -56,3 +56,28 @@ def close_engine() -> None:
     if hasattr(engine, "pool"):
         engine.pool.dispose()
     gc.collect()  # Force cleanup of any unclosed connection objects
+
+
+def reinit_database() -> None:
+    """Completely disposes of the old engine, creates a new one,
+    and reconfigures SessionLocal to bind to it.
+    """
+    global engine, SessionLocal
+    close_engine()
+
+    engine = create_engine(
+        f"sqlite:///{PATHS.database_file.as_posix()}",
+        connect_args={"check_same_thread": False},
+        future=True,
+    )
+
+    # Re-register event listeners on the new engine
+    @event.listens_for(engine, "connect")
+    def _set_sqlite_pragmas(dbapi_connection, _connection_record) -> None:
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.close()
+
+    SessionLocal.configure(bind=engine)
+

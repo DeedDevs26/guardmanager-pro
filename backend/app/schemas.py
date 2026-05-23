@@ -168,6 +168,12 @@ class BackupRunSchema(BaseModel):
     isAutomatic: bool = False
 
 
+class AccountCategorySchema(BaseModel):
+    id: str
+    name: str
+    type: Literal["expense", "income"]
+
+
 class BootstrapSchema(BaseModel):
     guards: list[GuardSchema]
     sites: list[SiteSchema]
@@ -176,6 +182,8 @@ class BootstrapSchema(BaseModel):
     invoices: list[InvoiceSchema]
     accounts: list[AccountRecordSchema]
     banks: list[BankOptionSchema]
+    categories: list[AccountCategorySchema]
+
 
 
 class SettingsResponseSchema(BaseModel):

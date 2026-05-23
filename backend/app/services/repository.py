@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from ..config import PATHS
 from ..models import (
+    AccountCategoryModel,
     AccountRecordModel,
     AppSettingsModel,
     AttendanceRecordModel,
@@ -21,6 +22,7 @@ from ..models import (
     SiteModel,
 )
 from ..schemas import (
+    AccountCategorySchema,
     AccountRecordSchema,
     AttendanceRecordSchema,
     BackupRunSchema,
@@ -266,6 +268,21 @@ def delete_bank(session: Session, bank_id: str) -> None:
     session.execute(delete(BankOptionModel).where(BankOptionModel.id == bank_id))
 
 
+def list_account_categories(session: Session) -> list[AccountCategorySchema]:
+    rows = session.scalars(select(AccountCategoryModel).order_by(AccountCategoryModel.name)).all()
+    return [AccountCategorySchema(id=r.id, name=r.name, type=r.type) for r in rows]
+
+
+def save_account_category(session: Session, payload: AccountCategorySchema) -> AccountCategorySchema:
+    _upsert(session, AccountCategoryModel(id=payload.id, name=payload.name, type=payload.type))
+    return payload
+
+
+def delete_account_category(session: Session, category_id: str) -> None:
+    session.execute(delete(AccountCategoryModel).where(AccountCategoryModel.id == category_id))
+
+
+
 def list_documents(session: Session, guard_id: str | None = None) -> list[GuardDocumentSchema]:
     stmt = select(GuardDocumentModel).order_by(GuardDocumentModel.created_at)
     if guard_id:
@@ -414,21 +431,8 @@ def seed_defaults(session: Session) -> None:
 
     session.commit()
 
-    if session.scalar(select(GuardModel.id).limit(1)):
+    if session.get(AppSettingsModel, "backup") is not None:
         return
-
-    for site in (
-        SiteSchema(id="s1", name="North Warehouse", clientName="Logistics Corp", contactNumber="9876543210", location="Industrial Area A", gstNo="29AAAAA0000A1Z5"),
-        SiteSchema(id="s2", name="City Mall", clientName="Retail Giants", contactNumber="9123456780", location="City Center", gstNo="29BBBBB1111B1Z5"),
-    ):
-        save_site(session, site)
-
-    for guard in (
-        GuardSchema(id="g1", name="Rajesh Kumar", code="SG-101", phone="9988776655", aadhaar="1234-5678-9012", siteId="s1", salaryPerShift=600, foodCostPerShift=50, uniformDeduction=0, joiningDate="2023-01-15", status="Active"),
-        GuardSchema(id="g2", name="Amit Singh", code="SG-102", phone="8877665544", aadhaar="5678-1234-9012", siteId="s1", salaryPerShift=550, foodCostPerShift=50, uniformDeduction=100, joiningDate="2023-03-10", status="Active"),
-        GuardSchema(id="g3", name="Suresh Patil", code="SG-103", phone="7766554433", aadhaar="9012-5678-1234", siteId="s2", salaryPerShift=700, foodCostPerShift=60, uniformDeduction=0, joiningDate="2023-06-20", status="Active"),
-    ):
-        save_guard(session, guard)
 
     for bank in (
         BankOptionSchema(id="b1", bankName="HDFC BANK", accountName="BLACK CAT COMMANDO SECURITY FORCE", accountNumber="50200116920705", ifsc="HDFC0005519", upiId="9500427215@pz"),

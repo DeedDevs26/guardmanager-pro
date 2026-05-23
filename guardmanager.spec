@@ -36,6 +36,12 @@ a = Analysis(
         "anyio.lowlevel",
         # multipart
         "multipart",
+        # jaraco & backports (required by setuptools/pkg_resources at runtime)
+        "backports",
+        "backports.tarfile",
+        "jaraco.context",
+        "jaraco.text",
+        "jaraco.functools",
     ],
     hookspath=[],
     hooksconfig={},

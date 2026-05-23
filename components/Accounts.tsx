@@ -2,18 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { jsPDF } from 'jspdf';
 import { db } from '../services/db';
 import { postJson } from '../services/api';
-import { AccountRecord } from '../types';
-
-// ── Categories ──────────────────────────────────────────────────────────────
-const EXPENSE_CATEGORIES = [
-  'Office Supplies', 'Utilities', 'Equipment', 'Uniforms',
-  'Travel', 'Fuel', 'Maintenance', 'Salaries & Wages',
-  'Training', 'Communication', 'Miscellaneous',
-];
-const INCOME_CATEGORIES = [
-  'Service Charges', 'Client Payment', 'Contract Revenue',
-  'Reimbursement', 'Other Income',
-];
+import { AccountRecord, AccountCategory } from '../types';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const fmt = (amount: number) =>
@@ -191,8 +180,13 @@ export const Accounts: React.FC = () => {
   });
   const [formError, setFormError] = useState('');
 
+  const [savedCategories, setSavedCategories] = useState<AccountCategory[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
+  const [customCategoryName, setCustomCategoryName] = useState<string>('');
+
   const refresh = useCallback(() => {
     setRecords(db.accounts.getAll());
+    setSavedCategories(db.categories.getAll());
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
@@ -234,6 +228,8 @@ export const Accounts: React.FC = () => {
     });
 
     setForm({ date: today(), type: 'expense', category: '', description: '', amount: undefined });
+    setSelectedCategoryId('');
+    setCustomCategoryName('');
     refresh();
   };
 
@@ -253,8 +249,6 @@ export const Accounts: React.FC = () => {
 
   const hasActiveFilters = filterCategory || filterType ||
     startDate !== firstOfMonth() || endDate !== today();
-
-  const categoryOptions = form.type === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
 
   const monthLabel = startDate === endDate
     ? fmtDate(startDate)
@@ -313,12 +307,20 @@ export const Accounts: React.FC = () => {
               {/* Expense / Income toggle */}
               <div className="flex rounded-lg border border-slate-200 overflow-hidden">
                 <button type="button"
-                  onClick={() => setForm({ ...form, type: 'expense', category: '' })}
+                  onClick={() => {
+                    setForm({ ...form, type: 'expense', category: '' });
+                    setSelectedCategoryId('');
+                    setCustomCategoryName('');
+                  }}
                   className={`flex-1 py-2 text-sm font-bold transition ${form.type === 'expense' ? 'bg-red-500 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}>
                   Expense
                 </button>
                 <button type="button"
-                  onClick={() => setForm({ ...form, type: 'income', category: '' })}
+                  onClick={() => {
+                    setForm({ ...form, type: 'income', category: '' });
+                    setSelectedCategoryId('');
+                    setCustomCategoryName('');
+                  }}
                   className={`flex-1 py-2 text-sm font-bold transition ${form.type === 'income' ? 'bg-emerald-500 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}>
                   Income
                 </button>
@@ -334,14 +336,83 @@ export const Accounts: React.FC = () => {
 
               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-1">Category</label>
-                <select required
-                  className="w-full border border-slate-200 rounded-lg p-2 text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  value={form.category}
-                  onChange={e => setForm({ ...form, category: e.target.value })}>
-                  <option value="">Select category…</option>
-                  {categoryOptions.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+                <div className="flex gap-2 items-center">
+                  <select required
+                    className="w-full border border-slate-200 rounded-lg p-2 text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer"
+                    value={selectedCategoryId}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setSelectedCategoryId(val);
+                      if (val === 'custom') {
+                        setForm({ ...form, category: '' });
+                      } else if (val === '') {
+                        setForm({ ...form, category: '' });
+                      } else {
+                        const cat = savedCategories.find(c => c.id === val);
+                        if (cat) setForm({ ...form, category: cat.name });
+                      }
+                    }}>
+                    <option value="">Select category…</option>
+                    {savedCategories
+                      .filter(c => c.type === form.type)
+                      .map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    <option value="custom" className="font-bold text-primary">+ Custom / New Category</option>
+                  </select>
+
+                  {selectedCategoryId && selectedCategoryId !== 'custom' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (confirm('Delete this category option?')) {
+                          db.categories.delete(selectedCategoryId).then(() => {
+                            refresh();
+                            setSelectedCategoryId('');
+                            setForm({ ...form, category: '' });
+                          });
+                        }
+                      }}
+                      className="text-slate-350 hover:text-red-500 transition-colors p-1 flex-shrink-0"
+                      title="Delete this category option"
+                    >
+                      <span className="material-icons text-base">delete</span>
+                    </button>
+                  )}
+                </div>
               </div>
+
+              {selectedCategoryId === 'custom' && (
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-slate-500 mb-1">Custom Category Name</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      className="w-full border border-slate-200 rounded-lg p-2 text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      placeholder="Enter new category..."
+                      value={customCategoryName}
+                      onChange={e => setCustomCategoryName(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!customCategoryName.trim()) return;
+                        const newCat = {
+                          id: `cat_${Date.now()}`,
+                          name: customCategoryName.trim(),
+                          type: form.type as 'expense' | 'income'
+                        };
+                        await db.categories.add(newCat);
+                        refresh();
+                        setSelectedCategoryId(newCat.id);
+                        setForm({ ...form, category: newCat.name });
+                        setCustomCategoryName('');
+                      }}
+                      className="bg-primary text-white px-3 py-2 rounded-lg text-xs font-bold hover:bg-blue-700 transition"
+                    >
+                      Save
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-1">Description</label>
