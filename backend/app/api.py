@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from .config import PATHS, ensure_directories
 from .database import Base, engine, get_db, session_scope
 from .schemas import (
+    AccountCategorySchema,
     AccountRecordSchema,
     AttendanceRecordSchema,
     BackupSettingsSchema,
@@ -64,6 +65,7 @@ def create_app() -> FastAPI:
             invoices=repository.list_invoices(db),
             accounts=repository.list_accounts(db),
             banks=repository.list_banks(db),
+            categories=repository.list_account_categories(db),
         )
 
     @app.get("/api/settings", response_model=SettingsResponseSchema)
@@ -245,6 +247,22 @@ def create_app() -> FastAPI:
     def remove_bank(bank_id: str, db: Session = Depends(get_db)):
         repository.delete_bank(db, bank_id)
         return StatusMessageSchema(message="Bank deleted")
+
+    @app.get("/api/categories", response_model=list[AccountCategorySchema])
+    def get_account_categories(db: Session = Depends(get_db)):
+        return repository.list_account_categories(db)
+
+    @app.put("/api/categories/{category_id}", response_model=AccountCategorySchema)
+    def put_account_category(category_id: str, payload: AccountCategorySchema, db: Session = Depends(get_db)):
+        if category_id != payload.id:
+            raise HTTPException(status_code=400, detail="Category id mismatch")
+        return repository.save_account_category(db, payload)
+
+    @app.delete("/api/categories/{category_id}", response_model=StatusMessageSchema)
+    def remove_account_category(category_id: str, db: Session = Depends(get_db)):
+        repository.delete_account_category(db, category_id)
+        return StatusMessageSchema(message="Category deleted")
+
 
     @app.get("/api/documents/{guard_id}")
     def get_documents(guard_id: str, db: Session = Depends(get_db)):

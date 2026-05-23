@@ -127,6 +127,12 @@ export interface BankOption extends InvoiceBankDetails {
   id: string;
 }
 
+export interface AccountCategory {
+  id: string;
+  name: string;
+  type: 'expense' | 'income';
+}
+
 export interface GuardDocument {
   id: string;
   guardId: string;
@@ -186,6 +192,7 @@ export interface BootstrapData {
   invoices: Invoice[];
   accounts: AccountRecord[];
   banks: BankOption[];
+  categories: AccountCategory[];
 }
 
 export interface SettingsResponse {

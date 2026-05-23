@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from ..config import PATHS
 from ..models import (
+    AccountCategoryModel,
     AccountRecordModel,
     AppSettingsModel,
     AttendanceRecordModel,
@@ -21,6 +22,7 @@ from ..models import (
     SiteModel,
 )
 from ..schemas import (
+    AccountCategorySchema,
     AccountRecordSchema,
     AttendanceRecordSchema,
     BackupRunSchema,
@@ -264,6 +266,21 @@ def save_bank(session: Session, payload: BankOptionSchema) -> BankOptionSchema:
 
 def delete_bank(session: Session, bank_id: str) -> None:
     session.execute(delete(BankOptionModel).where(BankOptionModel.id == bank_id))
+
+
+def list_account_categories(session: Session) -> list[AccountCategorySchema]:
+    rows = session.scalars(select(AccountCategoryModel).order_by(AccountCategoryModel.name)).all()
+    return [AccountCategorySchema(id=r.id, name=r.name, type=r.type) for r in rows]
+
+
+def save_account_category(session: Session, payload: AccountCategorySchema) -> AccountCategorySchema:
+    _upsert(session, AccountCategoryModel(id=payload.id, name=payload.name, type=payload.type))
+    return payload
+
+
+def delete_account_category(session: Session, category_id: str) -> None:
+    session.execute(delete(AccountCategoryModel).where(AccountCategoryModel.id == category_id))
+
 
 
 def list_documents(session: Session, guard_id: str | None = None) -> list[GuardDocumentSchema]:

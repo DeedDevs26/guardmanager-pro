@@ -1,4 +1,4 @@
-import { AccountRecord, AttendanceRecord, BankOption, BootstrapData, ExpenseRecord, Guard, Invoice, Site } from '../types';
+import { AccountCategory, AccountRecord, AttendanceRecord, BankOption, BootstrapData, ExpenseRecord, Guard, Invoice, Site } from '../types';
 import { delJson, getJson, putJson } from './api';
 
 type Cache = BootstrapData;
@@ -11,6 +11,7 @@ const cache: Cache = {
   invoices: [],
   accounts: [],
   banks: [],
+  categories: [],
 };
 
 let initialized = false;
@@ -23,6 +24,7 @@ function replaceAll(data: BootstrapData) {
   cache.invoices = data.invoices;
   cache.accounts = data.accounts;
   cache.banks = data.banks;
+  cache.categories = data.categories || [];
 }
 
 function upsertById<T extends { id: string }>(items: T[], next: T) {
@@ -117,6 +119,17 @@ export const db = {
     delete: async (id: string) => {
       cache.banks = cache.banks.filter(bank => bank.id !== id);
       await delJson(`/api/banks/${id}`);
+    }
+  },
+  categories: {
+    getAll: () => cache.categories,
+    add: async (category: AccountCategory) => {
+      upsertById(cache.categories, category);
+      await putJson(`/api/categories/${category.id}`, category);
+    },
+    delete: async (id: string) => {
+      cache.categories = cache.categories.filter(c => c.id !== id);
+      await delJson(`/api/categories/${id}`);
     }
   },
   accounts: {
