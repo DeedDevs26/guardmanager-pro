@@ -22,6 +22,7 @@ from .schemas import (
     GuardSchema,
     InvoiceSchema,
     PDFExportSchema,
+    OpenPDFSchema,
     SettingsResponseSchema,
     SiteSchema,
     StatusMessageSchema,
@@ -303,7 +304,15 @@ def create_app() -> FastAPI:
     def export_pdf(payload: PDFExportSchema, db: Session = Depends(get_db)):
         try:
             settings = repository.get_backup_settings(db)
-            export_path = Path(settings.pdfExportPath or PATHS.exports_dir)
+            base_export_path = Path(settings.pdfExportPath or PATHS.exports_dir)
+
+            # Build a client-specific sub-folder when clientName is provided
+            if payload.clientName and payload.clientName.strip():
+                client_folder = sanitize_filename(payload.clientName.strip())
+                export_path = base_export_path / client_folder
+            else:
+                export_path = base_export_path
+
             export_path.mkdir(parents=True, exist_ok=True)
             
             # Sanitize filename to prevent path traversal
@@ -325,6 +334,60 @@ def create_app() -> FastAPI:
         except Exception as e:
             log_message(f"ERROR: PDF export failed: {e}")
             raise HTTPException(status_code=500, detail=f"Failed to save PDF: {str(e)}")
+
+    @app.post("/api/export/open-pdf", response_model=StatusMessageSchema)
+    def open_pdf(payload: OpenPDFSchema, db: Session = Depends(get_db)):
+        try:
+            settings = repository.get_backup_settings(db)
+            base_export_path = Path(settings.pdfExportPath or PATHS.exports_dir)
+
+            # Get list of possible filenames (with and without date suffix)
+            possible_filenames = [payload.filename]
+            if "_" in payload.filename:
+                parts = payload.filename.rsplit("_", 1)
+                if len(parts) == 2 and parts[1].endswith(".pdf"):
+                    possible_filenames.append(parts[0] + ".pdf")
+
+            # Try to find the file in any of the directories
+            file_path = None
+            for fname in possible_filenames:
+                sanitized_fname = sanitize_filename(fname)
+                
+                # 1. Try client folder first (if clientName is set)
+                if payload.clientName and payload.clientName.strip():
+                    client_folder = sanitize_filename(payload.clientName.strip())
+                    p = base_export_path / client_folder / sanitized_fname
+                    if p.exists():
+                        file_path = p
+                        break
+                
+                # 2. Try root exports folder next
+                p = base_export_path / sanitized_fname
+                if p.exists():
+                    file_path = p
+                    break
+
+            if not file_path:
+                raise HTTPException(status_code=404, detail="PDF file not found on disk.")
+
+            import platform
+            import subprocess
+            import os
+
+            path_str = str(file_path.resolve())
+            if platform.system() == 'Windows':
+                os.startfile(path_str)
+            elif platform.system() == 'Darwin':
+                subprocess.Popen(['open', path_str])
+            else:
+                subprocess.Popen(['xdg-open', path_str])
+
+            return StatusMessageSchema(message="PDF opened successfully", data={"path": path_str})
+        except HTTPException:
+            raise
+        except Exception as e:
+            log_message(f"ERROR: Opening PDF failed: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to open PDF: {str(e)}")
 
     if PATHS.frontend_dist.exists():
         app.mount("/", StaticFiles(directory=PATHS.frontend_dist, html=True), name="frontend")

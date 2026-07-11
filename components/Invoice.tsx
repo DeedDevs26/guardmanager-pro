@@ -10,6 +10,18 @@ import { qrWithGst, qrWithoutGst } from './qrCodesBase64';
 
 const getTodayDate = () => new Date().toISOString().split('T')[0];
 
+const formatDateForFilename = (d: string): string => {
+    if (!d) return '';
+    const parts = d.split('-');
+    if (parts.length === 3) {
+        if (parts[0].length === 4) {
+            return `${parts[2]}-${parts[1]}-${parts[0]}`; // YYYY-MM-DD -> DD-MM-YYYY
+        }
+        return d;
+    }
+    return d.replace(/\//g, '-');
+};
+
 const getFinancialYearFormat = (): string => {
     const now = new Date();
     const month = now.getMonth() + 1;
@@ -316,9 +328,10 @@ interface SavedInvoicesProps {
     invoices: InvoiceType[];
     onDelete: (id: string) => void;
     onLoad: (inv: InvoiceType) => void;
+    onOpenPdf: (inv: InvoiceType) => void;
 }
 
-const SavedInvoicesList: React.FC<SavedInvoicesProps> = ({ invoices, onDelete, onLoad }) => {
+const SavedInvoicesList: React.FC<SavedInvoicesProps> = ({ invoices, onDelete, onLoad, onOpenPdf }) => {
     if (invoices.length === 0) {
         return (
             <div className="text-center text-slate-400 py-8 text-sm">
@@ -341,6 +354,14 @@ const SavedInvoicesList: React.FC<SavedInvoicesProps> = ({ invoices, onDelete, o
                         <div className="text-xs font-bold text-primary">₹{formatCurrency(inv.totalAmount)}</div>
                     </div>
                     <div className="flex gap-2">
+                        <button
+                            onClick={() => onOpenPdf(inv)}
+                            className="text-xs px-2 py-1 bg-slate-100 text-slate-700 rounded hover:bg-slate-200 font-medium flex items-center gap-1"
+                            title="Open saved PDF for viewing and printing"
+                        >
+                            <span className="material-icons text-[14px]">print</span>
+                            Print
+                        </button>
                         <button
                             onClick={() => onLoad(inv)}
                             className="text-xs px-2 py-1 bg-blue-50 text-primary rounded hover:bg-blue-100 font-medium"
@@ -479,6 +500,12 @@ export const Invoice: React.FC = () => {
             db.invoices.delete(id);
             setSavedInvoices(db.invoices.getAll());
         }
+    };
+
+    const handleOpenPdf = (inv: InvoiceType) => {
+        const filename = `${inv.invoiceNumber.replace(/\//g, '-')}_${formatDateForFilename(inv.invoiceDate)}.pdf`;
+        postJson('/api/export/open-pdf', { filename, clientName: inv.clientName })
+            .catch(err => alert('Failed to open PDF: ' + (err instanceof Error ? err.message : String(err))));
     };
 
     const handleDeleteBank = () => {
@@ -952,11 +979,11 @@ export const Invoice: React.FC = () => {
         y += 20;
         doc.text('Authorized signatory', pageW - margin, y, { align: 'right' });
 
-        const filename = `${invoiceNumber.replace(/\//g, '-')}.pdf`;
+        const filename = `${invoiceNumber.replace(/\//g, '-')}_${formatDateForFilename(invoiceDate)}.pdf`;
         const base64 = doc.output('datauristring');
 
-        postJson('/api/export/pdf', { filename, base64 })
-            .then(() => alert(`Invoice saved to configured exports folder as ${filename}`))
+        postJson('/api/export/pdf', { filename, base64, clientName })
+            .then(() => alert(`Invoice saved to configured exports folder under "${clientName || 'default'}" as ${filename}`))
             .catch(err => alert('Failed to save PDF: ' + (err instanceof Error ? err.message : String(err))));
     };
 
@@ -1020,7 +1047,7 @@ export const Invoice: React.FC = () => {
 
             {activeTab === 'saved' ? (
                 <div className="flex-1 overflow-auto bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-                    <SavedInvoicesList invoices={savedInvoices} onDelete={handleDelete} onLoad={handleLoad} />
+                    <SavedInvoicesList invoices={savedInvoices} onDelete={handleDelete} onLoad={handleLoad} onOpenPdf={handleOpenPdf} />
                 </div>
             ) : (
                 <div className="flex-1 overflow-hidden grid grid-cols-2 gap-4">

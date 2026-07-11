@@ -196,6 +196,13 @@ class SettingsResponseSchema(BaseModel):
 class PDFExportSchema(BaseModel):
     filename: str
     base64: str
+    clientName: str = ""
+
+
+class OpenPDFSchema(BaseModel):
+    filename: str
+    clientName: str = ""
+
 
 
 class DatabaseImportSchema(BaseModel):
